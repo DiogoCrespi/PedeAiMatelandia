@@ -1,6 +1,7 @@
 # PedeAiMatelandia
 
-Sistema de delivery escalável, pensado para suportar até 1 milhão de usuários, com arquitetura moderna e pronta para múltiplos frontends (web, mobile Flutter, etc).
+Sistema de delivery escalável, pensado para suportar até 1 milhão de usuários, com arquitetura moderna e pronta para múltiplos frontends (web, mobile Flutter, etc). 2
+
 
 ## Principais Tecnologias
 - **Frontend:** React (web), pronto para integração com Flutter (mobile)
