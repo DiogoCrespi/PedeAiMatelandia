@@ -1,0 +1,26 @@
+{
+  "development": {
+    "username": "admin",
+    "password": "adminpass",
+    "database": "delivery",
+    "host": "db-master",
+    "port": 5432,
+    "dialect": "postgres"
+  },
+  "test": {
+    "username": "admin",
+    "password": "adminpass",
+    "database": "delivery_test",
+    "host": "db-master",
+    "port": 5432,
+    "dialect": "postgres"
+  },
+  "production": {
+    "username": "admin",
+    "password": "adminpass",
+    "database": "delivery",
+    "host": "db-master",
+    "port": 5432,
+    "dialect": "postgres"
+  }
+} 

@@ -1,0 +1,8 @@
+{
+  "name": "FoodieApp",
+  "description": "A food delivery application where users can browse restaurants, order food, and track their orders.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "prompt": ""
+}
