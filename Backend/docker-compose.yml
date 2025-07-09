@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: adminpass
       POSTGRES_DB: delivery
     ports:
-      - '5432:5432'
+      - '5434:5432'
     volumes:
       - db-master-data:/var/lib/postgresql/data
       - ./Backend/db/master-init:/docker-entrypoint-initdb.d
@@ -18,7 +18,9 @@ services:
       - backend-net
 
   db-slave:
-    image: postgres:16
+    build:
+      context: ./db/slave-init
+      dockerfile: Dockerfile
     container_name: db-slave
     restart: always
     environment:
@@ -33,14 +35,13 @@ services:
     volumes:
       - db-slave-data:/var/lib/postgresql/data
       - ./Backend/db/slave-init:/docker-entrypoint-initdb.d
-      - ./Backend/db/slave-init/entrypoint-fix.sh:/entrypoint-fix.sh
     networks:
       - backend-net
     entrypoint: ["/entrypoint-fix.sh"]
 
   backend:
     build:
-      context: ./Backend
+      context: .
       dockerfile: Dockerfile
     container_name: backend
     restart: always
