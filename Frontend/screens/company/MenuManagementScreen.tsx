@@ -10,9 +10,9 @@ import {
     DocumentPlusIcon,
     DocumentTextIcon
 } from '../../icons';
-import { GoogleGenAI } from "@google/genai";
+// import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 type MenuCategory = CategoryType & { products: Product[] };
 
@@ -87,41 +87,41 @@ const MenuFromFileModal: React.FC<{
             const base64Data = filePreview.url.split(',')[1];
             const prompt = `Analise a imagem, PDF ou arquivo CSV deste cardápio. Extraia todos os itens, incluindo nome, descrição, preço e categoria. Retorne um array JSON válido. Cada objeto no array deve ter as chaves: "name" (string), "description" (string, pode ser vazia), "price" (number), and "category" (string). O preço deve ser um número, sem símbolos de moeda. Agrupe os itens em categorias lógicas.`;
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: [{
-                  text: prompt
-                }, {
-                  inlineData: {
-                    mimeType: selectedFile.type,
-                    data: base64Data,
-                  },
-                }],
-                 config: {
-                    responseMimeType: "application/json",
-                 }
-            });
+            // const response = await ai.models.generateContent({
+            //     model: 'gemini-2.5-flash',
+            //     contents: [{
+            //       text: prompt
+            //     }, {
+            //       inlineData: {
+            //         mimeType: selectedFile.type,
+            //         data: base64Data,
+            //       },
+            //     }],
+            //      config: {
+            //         responseMimeType: "application/json",
+            //      }
+            // });
 
-            let jsonStr = response.text.trim();
-            const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
-            const match = jsonStr.match(fenceRegex);
-            if (match && match[2]) {
-              jsonStr = match[2].trim();
-            }
+            // let jsonStr = response.text.trim();
+            // const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
+            // const match = jsonStr.match(fenceRegex);
+            // if (match && match[2]) {
+            //   jsonStr = match[2].trim();
+            // }
 
-            const parsedData: any[] = JSON.parse(jsonStr);
-            if (!Array.isArray(parsedData)) throw new Error("A resposta da IA não foi um array.");
+            // const parsedData: any[] = JSON.parse(jsonStr);
+            // if (!Array.isArray(parsedData)) throw new Error("A resposta da IA não foi um array.");
 
-            const products: ParsedProduct[] = parsedData.map(item => ({
-                name: item.name || '',
-                description: item.description || '',
-                price: typeof item.price === 'number' ? item.price : 0,
-                category: item.category || 'Outros',
-                included: true,
-                isAvailable: true,
-                imageUrl: '',
-            }));
-            setParsedProducts(products);
+            // const products: ParsedProduct[] = parsedData.map(item => ({
+            //     name: item.name || '',
+            //     description: item.description || '',
+            //     price: typeof item.price === 'number' ? item.price : 0,
+            //     category: item.category || 'Outros',
+            //     included: true,
+            //     isAvailable: true,
+            //     imageUrl: '',
+            // }));
+            // setParsedProducts(products);
 
         } catch (e) {
             console.error("Erro ao processar o cardápio:", e);
@@ -166,21 +166,21 @@ const MenuFromFileModal: React.FC<{
                 
                 const prompt = `Imagem para um aplicativo de delivery de comida. Foto de estúdio profissional, realista e apetitosa de ${foodDescription}. Foco no prato principal. Fundo limpo, neutro ou branco para destacar a comida. Sem texto, pessoas ou mãos na imagem.`;
 
-                const response = await ai.models.generateImages({
-                    model: 'imagen-3.0-generate-002',
-                    prompt: prompt,
-                    config: { numberOfImages: 1, outputMimeType: 'image/jpeg' },
-                });
+                // const response = await ai.models.generateImages({
+                //     model: 'imagen-3.0-generate-002',
+                //     prompt: prompt,
+                //     config: { numberOfImages: 1, outputMimeType: 'image/jpeg' },
+                // });
 
-                const base64ImageBytes = response.generatedImages[0].image.imageBytes;
-                const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+                // const base64ImageBytes = response.generatedImages[0].image.imageBytes;
+                // const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
                 
-                setParsedProducts(prev => {
-                    if (!prev) return null;
-                    const newProducts = [...prev];
-                    newProducts[product.originalIndex].imageUrl = imageUrl;
-                    return newProducts;
-                });
+                // setParsedProducts(prev => {
+                //     if (!prev) return null;
+                //     const newProducts = [...prev];
+                //     newProducts[product.originalIndex].imageUrl = imageUrl;
+                //     return newProducts;
+                // });
             } catch (error) {
                 console.error(`Erro ao gerar imagem para ${product.name}:`, error);
             } finally {
@@ -422,15 +422,16 @@ const ImageUploader: React.FC<{
         setPreview(null); // Clear preview while generating
 
         try {
-            const response = await ai.models.generateImages({
-                model: 'imagen-3.0-generate-002',
-                prompt: aiPrompt,
-                config: { numberOfImages: 1, outputMimeType: 'image/jpeg' },
-            });
-            const base64ImageBytes = response.generatedImages[0].image.imageBytes;
-            const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
-            setPreview(imageUrl);
-            onImageChange(imageUrl);
+            // const response = await ai.models.generateImages({
+            //     model: 'imagen-3.0-generate-002',
+            //     prompt: aiPrompt,
+            //     config: { numberOfImages: 1, outputMimeType: 'image/jpeg' },
+            // });
+
+            // const base64ImageBytes = response.generatedImages[0].image.imageBytes;
+            // const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+            // setPreview(imageUrl);
+            // onImageChange(imageUrl);
         } catch (error) {
             console.error("Erro ao gerar imagem:", error);
             alert("Ocorreu um erro ao gerar a imagem. Tente novamente.");

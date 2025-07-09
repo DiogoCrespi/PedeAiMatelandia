@@ -10,6 +10,7 @@ import NavBar from './components/NavBar';
 import FooterNav from './components/FooterNav';
 import SideCart from './components/SideCart';
 import SideCartTab from './components/SideCartTab';
+import ProductList from './components/ProductList';
 
 import SplashScreen from './screens/SplashScreen';
 import LoginScreen from './screens/LoginScreen';

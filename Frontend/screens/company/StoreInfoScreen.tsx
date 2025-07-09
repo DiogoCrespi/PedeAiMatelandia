@@ -4,9 +4,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Restaurant } from '../../types';
 import { MOCK_RESTAURANTS } from '../../data';
 import { ArrowUpTrayIcon, XMarkIcon, SparklesIcon } from '../../icons';
-import { GoogleGenAI } from "@google/genai";
+// import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const PhotoPlaceholderIcon: React.FC<{className?: string}> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
@@ -58,14 +58,15 @@ const ImageUploadModal: React.FC<{
         }
         setIsGenerating(true);
         try {
-            const response = await ai.models.generateImages({
-                model: 'imagen-3.0-generate-002',
-                prompt: aiPrompt,
-                config: { numberOfImages: 1, outputMimeType: 'image/jpeg' },
-            });
-            const base64ImageBytes = response.generatedImages[0].image.imageBytes;
-            const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
-            onImageReady(imageUrl);
+            // const response = await ai.models.generateImages({
+            //     model: 'imagen-3.0-generate-002',
+            //     prompt: aiPrompt,
+            //     config: { numberOfImages: 1, outputMimeType: 'image/jpeg' },
+            // });
+            // const base64ImageBytes = response.generatedImages[0].image.imageBytes;
+            // const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+            // onImageReady(imageUrl);
+            alert("Gerador de imagem de IA está desabilitado no momento.");
         } catch (error) {
             console.error("Erro ao gerar imagem:", error);
             alert("Ocorreu um erro ao gerar a imagem. Tente novamente.");

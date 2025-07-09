@@ -3,9 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { QuickReply, CompanyPromotion } from '../../types';
 import { MOCK_QUICK_REPLIES, MOCK_COMPANY_PROMOTIONS } from '../../data';
 import { PlusIcon, TrashIcon, PencilIcon, XMarkIcon, MegaphoneIcon, ArrowPathIcon, SparklesIcon } from '../../icons';
-import { GoogleGenAI } from "@google/genai";
+// import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // Reusable Toggle Switch Component
 const ToggleSwitch: React.FC<{ checked: boolean; onChange: (checked: boolean) => void; }> = ({ checked, onChange }) => {
@@ -142,14 +142,14 @@ const WhatsappBotScreen: React.FC = () => {
     try {
         const prompt = `Crie uma mensagem curta e amigável para reengajar um cliente de um app de delivery de comida que não pede há algum tempo. Incentive-o a conferir as novidades ou promoções. Mantenha a mensagem com menos de 160 caracteres e um tom informal, usando emojis.`;
         
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash-preview-04-17",
-            contents: prompt,
-        });
+        // const response = await ai.models.generateContent({
+        //     model: "gemini-2.5-flash-preview-04-17",
+        //     contents: prompt,
+        // });
         
-        const text = response.text.trim().replace(/^"|"$/g, ''); // Also remove quotes
+        // const text = response.text.trim().replace(/^"|"$/g, ''); // Also remove quotes
         
-        setReengagementConfig(prev => ({ ...prev, message: text }));
+        // setReengagementConfig(prev => ({ ...prev, message: text }));
 
     } catch (error) {
         console.error("Error generating re-engagement message:", error);

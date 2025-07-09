@@ -3,9 +3,9 @@ import React, { useState } from 'react';
 import { Client } from '../../types';
 import { MOCK_CLIENTS } from '../../data';
 import { PlusIcon, TrashIcon, PencilIcon, XMarkIcon, UserGroupIcon as PageIcon, DocumentArrowUpIcon, SparklesIcon, DocumentPlusIcon, DocumentTextIcon } from '../../icons';
-import { GoogleGenAI } from "@google/genai";
+// import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 
 // Modal for Adding/Editing individual Clients
@@ -174,39 +174,39 @@ const ClientImportModal: React.FC<{
             const base64Data = filePreview.url.split(',')[1];
             const prompt = `Analise a imagem ou arquivo CSV fornecido. Extraia uma lista de clientes. Para cada cliente, extraia o nome completo, telefone, e-mail e endereço. Retorne um array JSON válido. Cada objeto no array deve ter as chaves: "name" (string), "phone" (string), "email" (string, opcional, pode ser vazio) e "address" (string, opcional, pode ser vazio).`;
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: [{
-                  text: prompt
-                }, {
-                  inlineData: {
-                    mimeType: selectedFile.type,
-                    data: base64Data,
-                  },
-                }],
-                 config: {
-                    responseMimeType: "application/json",
-                 }
-            });
+            // const response = await genAI.models.generateContent({
+            //     model: 'gemini-2.5-flash',
+            //     contents: [{
+            //       text: prompt
+            //     }, {
+            //       inlineData: {
+            //         mimeType: selectedFile.type,
+            //         data: base64Data,
+            //       },
+            //     }],
+            //      config: {
+            //         responseMimeType: "application/json",
+            //      }
+            // });
 
-            let jsonStr = response.text.trim();
-            const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
-            const match = jsonStr.match(fenceRegex);
-            if (match && match[2]) {
-              jsonStr = match[2].trim();
-            }
+            // let jsonStr = response.text.trim();
+            // const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
+            // const match = jsonStr.match(fenceRegex);
+            // if (match && match[2]) {
+            //   jsonStr = match[2].trim();
+            // }
 
-            const parsedData: any[] = JSON.parse(jsonStr);
-            if (!Array.isArray(parsedData)) throw new Error("A resposta da IA não foi um array.");
+            // const parsedData: any[] = JSON.parse(jsonStr);
+            // if (!Array.isArray(parsedData)) throw new Error("A resposta da IA não foi um array.");
 
-            const clients: ParsedClient[] = parsedData.map(item => ({
-                name: item.name || '',
-                phone: item.phone || '',
-                email: item.email || '',
-                address: item.address || '',
-                included: true,
-            }));
-            setParsedClients(clients);
+            // const clients: ParsedClient[] = parsedData.map(item => ({
+            //     name: item.name || '',
+            //     phone: item.phone || '',
+            //     email: item.email || '',
+            //     address: item.address || '',
+            //     included: true,
+            // }));
+            // setParsedClients(clients);
 
         } catch (e) {
             console.error("Erro ao processar a lista de clientes:", e);

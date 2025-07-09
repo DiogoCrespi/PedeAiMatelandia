@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <script type="module" src="/@vite/client"></script>
+
     <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
     <link
       rel="stylesheet"
@@ -12,73 +14,6 @@
     <title>Stitch Design</title>
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64," />
 
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              appBg: '#fbfaf9',
-              appTextPrimary: '#181411',
-              appTextSecondary: '#89705d',
-              appHeaderIcons: '#181411',
-              appHeaderButtonBg: '#f1edea',
-              appHeaderButtonBgHover: '#eddbce',
-              appCategoryActiveBorder: '#ecd8c9',
-              appBorderLight: '#e2dad5',
-              appFooterBg: 'rgba(255,255,255,0.8)',
-              appFooterIconActive: '#181411',
-              appFooterIconInactive: '#89705d',
-              appPrimaryActionBg: '#181411', // For primary buttons
-              appPrimaryActionText: '#fbfaf9', // For primary buttons text
-              // Keep old colors for compatibility during transition, or remove if fully replaced
-              primary: '#FF3D00', 
-              brandGreen: '#22C55E',
-            }
-          }
-        }
-      }
-
-      // Controle do footer minimizado
-      let isFooterMinimized = false;
-      let lastScrollTop = 0;
-      let isHeaderMinimized = false;
-      
-      window.addEventListener('scroll', function() {
-        const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
-        const footer = document.getElementById('footer-nav'); // Updated ID to avoid conflict with semantic footer
-        const header = document.getElementById('app-header'); // Updated ID
-        
-        if (!footer || !header) return;
-
-        // Minimiza o footer quando rola para baixo
-        if (currentScroll > lastScrollTop) {
-          if (!isFooterMinimized) {
-            footer.classList.add('footer-minimized');
-            isFooterMinimized = true;
-          }
-          // Minimiza o header quando rola para baixo
-          if (!isHeaderMinimized) {
-            header.classList.add('header-minimized');
-            isHeaderMinimized = true;
-          }
-        } 
-        // Restaura o footer quando rola para cima
-        else if (currentScroll < lastScrollTop) {
-          if (isFooterMinimized) {
-            footer.classList.remove('footer-minimized');
-            isFooterMinimized = false;
-          }
-          // Restaura o header quando rola para cima
-          if (isHeaderMinimized) {
-            header.classList.remove('header-minimized');
-            isHeaderMinimized = false;
-          }
-        }
-        
-        lastScrollTop = currentScroll <= 0 ? 0 : currentScroll; // For Mobile or negative scrolling
-      });
-    </script>
     <style>
       body {
         font-family: "Plus Jakarta Sans", "Noto Sans", sans-serif;
@@ -233,19 +168,8 @@
         }
       }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.1.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.6.2",
-    "react/": "https://esm.sh/react@^19.1.0/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.8.0"
-  }
-}
-</script>
-  <link rel="stylesheet" href="/index.css">
-</head>
+
+  </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div class="relative flex size-full min-h-screen flex-col bg-appBg group/design-root overflow-x-hidden">
