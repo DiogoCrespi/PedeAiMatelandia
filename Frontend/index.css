@@ -1,0 +1,4 @@
+/* index.css básico para aplicação React */
+@tailwind base;
+@tailwind components;
+@tailwind utilities; 
