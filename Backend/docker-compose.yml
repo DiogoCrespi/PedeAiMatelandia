@@ -59,8 +59,8 @@ services:
       - db-slave
     networks:
       - backend-net
-    volumes:
-      - ./Backend:/usr/src/app
+    # volumes:
+    #   - ./Backend:/usr/src/app
 
   pgadmin:
     image: dpage/pgadmin4

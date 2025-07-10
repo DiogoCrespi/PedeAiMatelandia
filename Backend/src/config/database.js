@@ -24,6 +24,7 @@ const sequelize = new Sequelize({
     read: [slave],
     write: master,
   },
+  dialect: 'postgres', // Adicionado para evitar erro de dialeto
   pool: {
     max: 20,
     idle: 30000,
