@@ -1,86 +1,32 @@
+version: '3.8'
 services:
-  db-master:
+  db:
     image: postgres:16
-    container_name: db-master
     restart: always
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: adminpass
       POSTGRES_DB: delivery
     ports:
-      - '5434:5432'
+      - "5432:5432"
     volumes:
-      - db-master-data:/var/lib/postgresql/data
-      - ./Backend/db/master-init:/docker-entrypoint-initdb.d
-      - ./Backend/db/master-init/postgresql.conf:/var/lib/postgresql/data/postgresql.conf
-      - ./Backend/db/master-init/pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
-    networks:
-      - backend-net
-
-  db-slave:
-    build:
-      context: ./db/slave-init
-      dockerfile: Dockerfile
-    container_name: db-slave
-    restart: always
-    environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: adminpass
-      POSTGRES_DB: delivery
-      POSTGRES_HOST_AUTH_METHOD: trust
-    depends_on:
-      - db-master
-    ports:
-      - '5433:5432'
-    volumes:
-      - db-slave-data:/var/lib/postgresql/data
-      - ./Backend/db/slave-init:/docker-entrypoint-initdb.d
-    networks:
-      - backend-net
-    entrypoint: ["/entrypoint-fix.sh"]
+      - db-data:/var/lib/postgresql/data
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: backend
     restart: always
     environment:
-      DB_MASTER_HOST: db-master
-      DB_SLAVE_HOST: db-slave
+      DB_HOST: db
       DB_USER: admin
       DB_PASSWORD: adminpass
       DB_NAME: delivery
       NODE_ENV: development
     ports:
-      - '3000:3000'
+      - "3000:3000"
     depends_on:
-      - db-master
-      - db-slave
-    networks:
-      - backend-net
-    # volumes:
-    #   - ./Backend:/usr/src/app
-
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: pgadmin
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: adminpass
-    ports:
-      - '5050:80'
-    depends_on:
-      - db-master
-      - db-slave
-    networks:
-      - backend-net
+      - db
 
 volumes:
-  db-master-data:
-  db-slave-data:
-
-networks:
-  backend-net:
-    driver: bridge 
+  db-data: 

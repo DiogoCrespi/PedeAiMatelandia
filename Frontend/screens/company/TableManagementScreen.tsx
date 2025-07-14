@@ -1,13 +1,16 @@
 
-import React, { useState } from 'react';
+
+
+import React, { useState, useEffect } from 'react';
 import { Table } from '../../types';
+import * as api from '../../api';
 import { PlusIcon, TrashIcon, PencilIcon, XMarkIcon, TableCellsIcon as PageIcon } from '../../icons';
 
 interface TableModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (table: Omit<Table, 'id' | 'status'>) => void;
-  tableToEdit: Omit<Table, 'id' | 'status'> | null;
+  tableToEdit: Omit<Table, 'id' | 'status' | 'currentOrderId'> | null;
 }
 
 const TableModal: React.FC<TableModalProps> = ({ isOpen, onClose, onSave, tableToEdit }) => {
@@ -52,30 +55,68 @@ const TableModal: React.FC<TableModalProps> = ({ isOpen, onClose, onSave, tableT
 };
 
 
-interface TableManagementScreenProps {
-    tables: Table[];
-    onAdd: (table: Omit<Table, 'id' | 'status'>) => void;
-    onUpdate: (table: Table) => void; // Placeholder for future use
-    onDelete: (tableId: string) => void;
-}
-
-const TableManagementScreen: React.FC<TableManagementScreenProps> = ({ tables, onAdd, onUpdate, onDelete }) => {
+const TableManagementScreen: React.FC = () => {
+    const [tables, setTables] = useState<Table[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTable, setEditingTable] = useState<Table | null>(null);
+
+    useEffect(() => {
+        const fetchTables = async () => {
+            setIsLoading(true);
+            try {
+                const data = await api.getTables();
+                setTables(data);
+            } catch(error) {
+                console.error("Failed to fetch tables", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchTables();
+    }, []);
 
     const handleOpenModal = (table: Table | null = null) => {
         setEditingTable(table);
         setIsModalOpen(true);
     };
 
-    const handleSave = (tableData: Omit<Table, 'id' | 'status'>) => {
-        if(editingTable) {
-            onUpdate({ ...editingTable, ...tableData });
-        } else {
-            onAdd(tableData);
+    const handleSave = async (tableData: Omit<Table, 'id' | 'status'>) => {
+        try {
+            if(editingTable) {
+                const updatedTable = await api.updateTable({ ...editingTable, ...tableData });
+                setTables(prev => prev.map(t => t.id === updatedTable.id ? updatedTable : t));
+            } else {
+                const newTable = await api.addTable(tableData);
+                setTables(prev => [...prev, newTable]);
+            }
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error("Failed to save table:", error);
+            alert("Não foi possível salvar a mesa.");
+        }
+    };
+
+    const handleDelete = async (tableId: string) => {
+        if(window.confirm("Tem certeza que deseja excluir esta mesa?")) {
+            try {
+                await api.deleteTable(tableId);
+                setTables(prev => prev.filter(t => t.id !== tableId));
+            } catch (error) {
+                console.error("Failed to delete table:", error);
+                alert("Não foi possível excluir a mesa.");
+            }
         }
     };
     
+    if (isLoading) {
+      return (
+        <div className="flex h-full items-center justify-center">
+            <div className="w-16 h-16 border-4 border-t-transparent border-gray-800 rounded-full animate-spin"></div>
+        </div>
+      );
+    }
+
     return (
         <div className="p-4 sm:p-6 lg:p-8 space-y-8 bg-gray-50 h-full overflow-y-auto">
             <style>{`.input { border: 1px solid #d1d5db; padding: 0.5rem 0.75rem; border-radius: 0.375rem; width: 100%; color: #1f2937; } .input:focus { outline:none; } .btn-primary { background-color: #1f2937; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 600; } .btn-secondary { background-color: #e5e7eb; color: #1f2937; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 600; }`}</style>
@@ -105,7 +146,7 @@ const TableManagementScreen: React.FC<TableManagementScreenProps> = ({ tables, o
                         <p className="font-bold text-gray-800 mt-2">{table.name}</p>
                         <div className="flex gap-2 mt-3">
                              <button onClick={() => handleOpenModal(table)} className="p-1.5 text-gray-400 hover:text-gray-800"><PencilIcon className="w-4 h-4"/></button>
-                             <button onClick={() => onDelete(table.id)} className="p-1.5 text-gray-400 hover:text-red-500"><TrashIcon className="w-4 h-4"/></button>
+                             <button onClick={() => handleDelete(table.id)} className="p-1.5 text-gray-400 hover:text-red-500"><TrashIcon className="w-4 h-4"/></button>
                         </div>
                     </div>
                 ))}

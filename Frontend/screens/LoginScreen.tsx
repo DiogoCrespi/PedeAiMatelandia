@@ -1,9 +1,10 @@
 
+
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User } from '../types';
 import { ROUTE_PATHS } from '../constants';
-import { MOCK_USER } from '../data';
+import * as api from '../api';
 import { LogoIcon, GoogleIcon } from '../icons';
 
 interface LoginScreenProps {
@@ -13,21 +14,48 @@ interface LoginScreenProps {
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   
   const location = useLocation();
   const fromPath = location.state?.from?.pathname;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password) {
-      onLogin(MOCK_USER, fromPath);
-    } else {
-      alert('Por favor, preencha e-mail e senha.');
+    if (!email || !password) {
+      setError('Por favor, preencha e-mail e senha.');
+      return;
+    }
+    setError('');
+    setIsLoggingIn(true);
+    try {
+        const user = await api.login(email, password);
+        if (user) {
+            onLogin(user, fromPath);
+        } else {
+            setError('E-mail ou senha inválidos.');
+        }
+    } catch (err) {
+        setError('Ocorreu um erro. Tente novamente.');
+    } finally {
+        setIsLoggingIn(false);
     }
   };
 
-  const handleSocialLogin = () => {
-    onLogin(MOCK_USER, fromPath);
+  const handleSocialLogin = async () => {
+    setIsLoggingIn(true);
+    setError('');
+    try {
+        // Using the same mock login for social for now
+        const user = await api.login('social@example.com', 'password');
+        if (user) {
+            onLogin(user, fromPath);
+        }
+    } catch (err) {
+        setError('Ocorreu um erro com o login social.');
+    } finally {
+        setIsLoggingIn(false);
+    }
   }
 
   return (
@@ -50,6 +78,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               placeholder="seuemail@exemplo.com"
               className="w-full px-4 py-3 border border-appBorderLight rounded-lg focus:ring-appTextPrimary focus:border-appTextPrimary transition-shadow bg-white text-appTextPrimary placeholder-appTextSecondary"
               required
+              disabled={isLoggingIn}
             />
           </div>
           <div>
@@ -62,8 +91,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               placeholder="Sua senha"
               className="w-full px-4 py-3 border border-appBorderLight rounded-lg focus:ring-appTextPrimary focus:border-appTextPrimary transition-shadow bg-white text-appTextPrimary placeholder-appTextSecondary"
               required
+              disabled={isLoggingIn}
             />
           </div>
+           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="text-right">
             <Link to={ROUTE_PATHS.PASSWORD_RECOVERY} className="text-sm text-appTextPrimary hover:underline">
               Esqueci minha senha
@@ -71,9 +102,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           </div>
           <button
             type="submit"
-            className="w-full bg-appPrimaryActionBg text-appPrimaryActionText py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-appTextPrimary focus:ring-opacity-50"
+            className="w-full bg-appPrimaryActionBg text-appPrimaryActionText py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-appTextPrimary focus:ring-opacity-50 disabled:opacity-70 disabled:cursor-not-allowed"
+            disabled={isLoggingIn}
           >
-            Entrar
+            {isLoggingIn ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
         
@@ -93,10 +125,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
         </div>
 
         <div className="space-y-3">
-            <button onClick={handleSocialLogin} className="w-full flex items-center justify-center py-3 border border-appBorderLight rounded-lg hover:bg-appHeaderButtonBg text-appTextPrimary transition-colors">
+            <button onClick={handleSocialLogin} disabled={isLoggingIn} className="w-full flex items-center justify-center py-3 border border-appBorderLight rounded-lg hover:bg-appHeaderButtonBg text-appTextPrimary transition-colors disabled:opacity-70 disabled:cursor-not-allowed">
                 <GoogleIcon className="w-5 h-5 mr-3" /> Entrar com Google
             </button>
-            <button onClick={handleSocialLogin} className="w-full flex items-center justify-center py-3 border border-appBorderLight rounded-lg hover:bg-appHeaderButtonBg text-appTextPrimary transition-colors">
+            <button onClick={handleSocialLogin} disabled={isLoggingIn} className="w-full flex items-center justify-center py-3 border border-appBorderLight rounded-lg hover:bg-appHeaderButtonBg text-appTextPrimary transition-colors disabled:opacity-70 disabled:cursor-not-allowed">
                 <span className="w-5 h-5 mr-2 bg-blue-700 rounded-full inline-block text-white text-center font-bold leading-5">f</span> Entrar com Facebook
             </button>
         </div>

@@ -1,9 +1,10 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Product, SelectedProductOption, User, ProductOptionChoice } from '../types';
 import { ROUTE_PATHS } from '../constants';
-import { MOCK_PRODUCTS, MOCK_USER } from '../data';
+import * as api from '../api';
 import { PlusIcon, MinusIcon, ChevronLeftIcon, GoogleIcon } from '../icons';
 
 interface ProductScreenProps {
@@ -22,22 +23,36 @@ const ProductScreen: React.FC<ProductScreenProps> = ({ addToCart, currentUser, o
   const [observations, setObservations] = useState('');
   const [totalPrice, setTotalPrice] = useState(0);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (productId) {
-      const foundProduct = MOCK_PRODUCTS.find(p => p.id === productId && p.restaurantId === storeId);
-      setProduct(foundProduct || null);
-      if (foundProduct) {
-        setTotalPrice(foundProduct.price);
-        const initialSelected: SelectedProductOption[] = [];
-        foundProduct.options?.forEach(group => {
-            if (group.type === 'single' && group.required && group.choices.length > 0) {
-                initialSelected.push({ groupName: group.name, choiceName: group.choices[0].name, priceAdjustment: group.choices[0].priceAdjustment || 0 });
+    const fetchProduct = async () => {
+        if (productId) {
+            setIsLoading(true);
+            try {
+                const foundProduct = await api.getProductById(productId);
+                if (foundProduct && foundProduct.restaurantId === storeId) {
+                    setProduct(foundProduct);
+                    setTotalPrice(foundProduct.price);
+                    const initialSelected: SelectedProductOption[] = [];
+                    foundProduct.options?.forEach(group => {
+                        if (group.type === 'single' && group.required && group.choices.length > 0) {
+                            initialSelected.push({ groupName: group.name, choiceName: group.choices[0].name, priceAdjustment: group.choices[0].priceAdjustment || 0 });
+                        }
+                    });
+                    setSelectedOptions(initialSelected);
+                } else {
+                    setProduct(null);
+                }
+            } catch (error) {
+                console.error("Failed to fetch product:", error);
+                setProduct(null);
+            } finally {
+                setIsLoading(false);
             }
-        });
-        setSelectedOptions(initialSelected);
-      }
-    }
+        }
+    };
+    fetchProduct();
   }, [storeId, productId]);
 
   useEffect(() => {
@@ -88,11 +103,26 @@ const ProductScreen: React.FC<ProductScreenProps> = ({ addToCart, currentUser, o
     addToCart(product, quantity, selectedOptions, observations);
   };
 
-  const handleGoogleLogin = () => {
-    onSocialLogin(MOCK_USER, location.pathname);
-    setShowLoginPrompt(false);
+  const handleGoogleLogin = async () => {
+    try {
+        const user = await api.login('social@example.com', 'password'); // Mock social login
+        if (user) {
+            onSocialLogin(user, location.pathname);
+            setShowLoginPrompt(false);
+        }
+    } catch (error) {
+        console.error("Social login failed:", error);
+        alert("Falha no login com Google.");
+    }
   };
   
+  if (isLoading) {
+    return (
+        <div className="flex items-center justify-center h-screen">
+            <div className="w-16 h-16 border-4 border-t-transparent border-appTextSecondary rounded-full animate-spin"></div>
+        </div>
+    );
+  }
 
   if (!product) {
     return <div className="p-4 text-center">Produto não encontrado.</div>;

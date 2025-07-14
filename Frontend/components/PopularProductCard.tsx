@@ -1,15 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Product } from '../types';
+import { Product, Restaurant } from '../types';
 import { ROUTE_PATHS } from '../constants';
-import { MOCK_RESTAURANTS } from '../data';
 
 interface PopularProductCardProps {
   product: Product;
+  restaurant?: Restaurant;
 }
 
-const PopularProductCard: React.FC<PopularProductCardProps> = ({ product }) => {
-  const restaurant = MOCK_RESTAURANTS.find(r => r.id === product.restaurantId);
+const PopularProductCard: React.FC<PopularProductCardProps> = ({ product, restaurant }) => {
 
   return (
     <Link

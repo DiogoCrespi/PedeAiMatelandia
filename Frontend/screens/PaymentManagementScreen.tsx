@@ -1,7 +1,8 @@
+
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PaymentMethod } from '../types';
-import { MOCK_USER } from '../data';
+import { PaymentMethod, User } from '../types';
 import { ChevronLeftIcon, TrashIcon, PlusIcon, XMarkIcon, VisaIcon, MastercardIcon, CreditCardIcon } from '../icons';
 
 interface PaymentManagementScreenProps {
@@ -9,6 +10,7 @@ interface PaymentManagementScreenProps {
   onSetDefault: (paymentMethodId: string) => void;
   onAdd: (newPaymentMethod: Omit<PaymentMethod, 'id'>) => void;
   onDelete: (paymentMethodId: string) => void;
+  user: User;
 }
 
 const emptyPaymentMethod: Omit<PaymentMethod, 'id'> = {
@@ -19,12 +21,12 @@ const emptyPaymentMethod: Omit<PaymentMethod, 'id'> = {
   isDefault: false,
 };
 
-const PaymentManagementScreen: React.FC<PaymentManagementScreenProps> = ({ paymentMethods, onSetDefault, onAdd, onDelete }) => {
+const PaymentManagementScreen: React.FC<PaymentManagementScreenProps> = ({ paymentMethods, onSetDefault, onAdd, onDelete, user }) => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCard, setNewCard] = useState({
       cardNumber: '',
-      cardholderName: MOCK_USER.name,
+      cardholderName: user.name,
       expiryDate: '',
       cvv: '',
       isDefault: false,
@@ -33,7 +35,7 @@ const PaymentManagementScreen: React.FC<PaymentManagementScreenProps> = ({ payme
   const openAddModal = () => {
     setNewCard({
       cardNumber: '',
-      cardholderName: MOCK_USER.name,
+      cardholderName: user.name,
       expiryDate: '',
       cvv: '',
       isDefault: paymentMethods.length === 0, // Make default if it's the first card

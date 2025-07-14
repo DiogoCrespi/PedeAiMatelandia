@@ -1,11 +1,14 @@
 
+
+
+
 import React, { useState, useEffect } from 'react';
 import { QuickReply, CompanyPromotion } from '../../types';
-import { MOCK_QUICK_REPLIES, MOCK_COMPANY_PROMOTIONS } from '../../data';
+import * as api from '../../api';
 import { PlusIcon, TrashIcon, PencilIcon, XMarkIcon, MegaphoneIcon, ArrowPathIcon, SparklesIcon } from '../../icons';
-// import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
-// const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
 // Reusable Toggle Switch Component
 const ToggleSwitch: React.FC<{ checked: boolean; onChange: (checked: boolean) => void; }> = ({ checked, onChange }) => {
@@ -94,8 +97,8 @@ const QuickReplyModal: React.FC<{
 
 const WhatsappBotScreen: React.FC = () => {
   const [isBotActive, setIsBotActive] = useState(false);
-  const [greetingMessage, setGreetingMessage] = useState('Olá! Seja bem-vindo ao nosso atendimento. Como posso ajudar?');
-  const [quickReplies, setQuickReplies] = useState<QuickReply[]>(MOCK_QUICK_REPLIES);
+  const [greetingMessage, setGreetingMessage] = useState('');
+  const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReply, setEditingReply] = useState<QuickReply | null>(null);
 
@@ -104,23 +107,64 @@ const WhatsappBotScreen: React.FC = () => {
     daysInactive: 30,
     message: 'Olá! Sentimos sua falta. Que tal dar uma olhada nas nossas novidades? 😉',
   });
-  const [promotions] = useState<CompanyPromotion[]>(MOCK_COMPANY_PROMOTIONS);
-  const [selectedPromoId, setSelectedPromoId] = useState<string>(promotions.find(p => p.isActive)?.id || '');
+  const [promotions, setPromotions] = useState<CompanyPromotion[]>([]);
+  const [selectedPromoId, setSelectedPromoId] = useState<string>('');
   const [isGeneratingMessage, setIsGeneratingMessage] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
+  useEffect(() => {
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const [replies, promos, restaurantData] = await Promise.all([
+                api.getQuickReplies(),
+                api.getCompanyPromotions(),
+                api.getRestaurantById('rest1')
+            ]);
+            setQuickReplies(replies);
+            setPromotions(promos);
+            if(restaurantData?.whatsappConfig) {
+                setGreetingMessage(restaurantData.whatsappConfig.greetingMessage);
+                if (restaurantData.whatsappConfig.reengagementConfig) {
+                    setReengagementConfig(restaurantData.whatsappConfig.reengagementConfig);
+                }
+            }
+            if (promos.length > 0) {
+              setSelectedPromoId(promos.find(p => p.isActive)?.id || promos[0].id);
+            }
+        } catch (error) {
+            console.error("Failed to fetch bot settings:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+    fetchData();
+  }, []);
 
-  const handleSaveReply = (replyData: Omit<QuickReply, 'id'> | QuickReply) => {
-    if ('id' in replyData) { // Editing
-      setQuickReplies(prev => prev.map(r => r.id === replyData.id ? replyData : r));
-    } else { // Adding
-      const newReply = { ...replyData, id: `qr-${Date.now()}` };
-      setQuickReplies(prev => [newReply, ...prev]);
+  const handleSaveReply = async (replyData: Omit<QuickReply, 'id'> | QuickReply) => {
+    try {
+        if ('id' in replyData) { // Editing
+            const updatedReply = await api.updateQuickReply(replyData);
+            setQuickReplies(prev => prev.map(r => r.id === updatedReply.id ? updatedReply : r));
+        } else { // Adding
+            const newReply = await api.addQuickReply(replyData);
+            setQuickReplies(prev => [newReply, ...prev]);
+        }
+    } catch(error) {
+        console.error("Failed to save quick reply:", error);
+        alert("Erro ao salvar resposta rápida.");
     }
   };
   
-  const handleDeleteReply = (id: string) => {
+  const handleDeleteReply = async (id: string) => {
       if (window.confirm("Tem certeza que deseja remover esta resposta?")) {
-          setQuickReplies(prev => prev.filter(r => r.id !== id));
+          try {
+            await api.deleteQuickReply(id);
+            setQuickReplies(prev => prev.filter(r => r.id !== id));
+          } catch (error) {
+            console.error("Failed to delete quick reply:", error);
+            alert("Erro ao excluir resposta rápida.");
+          }
       }
   }
 
@@ -142,14 +186,14 @@ const WhatsappBotScreen: React.FC = () => {
     try {
         const prompt = `Crie uma mensagem curta e amigável para reengajar um cliente de um app de delivery de comida que não pede há algum tempo. Incentive-o a conferir as novidades ou promoções. Mantenha a mensagem com menos de 160 caracteres e um tom informal, usando emojis.`;
         
-        // const response = await ai.models.generateContent({
-        //     model: "gemini-2.5-flash-preview-04-17",
-        //     contents: prompt,
-        // });
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+        });
         
-        // const text = response.text.trim().replace(/^"|"$/g, ''); // Also remove quotes
+        const text = response.text.trim().replace(/^"|"$/g, ''); // Also remove quotes
         
-        // setReengagementConfig(prev => ({ ...prev, message: text }));
+        setReengagementConfig(prev => ({ ...prev, message: text }));
 
     } catch (error) {
         console.error("Error generating re-engagement message:", error);
@@ -166,9 +210,25 @@ const WhatsappBotScreen: React.FC = () => {
     if (!promo) return 'Promoção não encontrada.';
     return `📢 PROMOÇÃO IMPERDÍVEL!\n\n*${promo.name}*\n${promo.description}\n\nAproveite agora!`;
   };
-
-  const handleSaveSettings = (section: string) => {
-      alert(`${section} salvas com sucesso! (Simulação)`);
+  
+  const handleSaveReengagement = async () => {
+      try {
+          await api.updateWhatsappBotConfig({ reengagementConfig });
+          alert('Configurações de reengajamento salvas!');
+      } catch(error) {
+          alert('Erro ao salvar configurações de reengajamento.');
+          console.error(error);
+      }
+  };
+  
+  const handleSaveGreeting = async () => {
+       try {
+            await api.updateWhatsappGreeting(greetingMessage);
+            alert(`Mensagem de saudação salva com sucesso!`);
+      } catch (error) {
+            alert(`Erro ao salvar mensagem de saudação.`);
+            console.error(error);
+      }
   };
 
   const handleSendBroadcast = () => {
@@ -176,8 +236,14 @@ const WhatsappBotScreen: React.FC = () => {
           alert('Por favor, selecione uma promoção para divulgar.');
           return;
       }
+      const message = getPromoBroadcastMessage();
       if (window.confirm("Você tem certeza que deseja enviar esta promoção para todos os seus contatos?")) {
-          alert("Disparo de promoção iniciado! (Simulação)");
+          api.sendPromoBroadcast(selectedPromoId, message)
+            .then(() => alert("Disparo de promoção iniciado! (Simulação)"))
+            .catch((err) => {
+                console.error(err);
+                alert("Erro ao iniciar disparo de promoção.");
+            });
       }
   };
 
@@ -227,7 +293,7 @@ const WhatsappBotScreen: React.FC = () => {
             placeholder="Digite sua mensagem de saudação..."
         />
          <div className="text-right mt-2">
-            <button onClick={() => handleSaveSettings('Mensagem de saudação')} className="btn-primary text-sm">Salvar Mensagem</button>
+            <button onClick={handleSaveGreeting} className="btn-primary text-sm">Salvar Mensagem</button>
         </div>
       </section>
 
@@ -244,7 +310,9 @@ const WhatsappBotScreen: React.FC = () => {
             </button>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {quickReplies.length > 0 ? (
+          {isLoading ? (
+            <div className="p-12 text-center text-gray-500">Carregando respostas...</div>
+          ) : quickReplies.length > 0 ? (
             <div className="divide-y divide-gray-200">
               {quickReplies.map(qr => (
                 <div key={qr.id} className="p-4 flex flex-col sm:flex-row justify-between items-start gap-4 hover:bg-gray-50/50">
@@ -320,7 +388,7 @@ const WhatsappBotScreen: React.FC = () => {
                         </div>
                       <div className="text-right mt-4">
                           <button 
-                            onClick={() => handleSaveSettings('Lembrete de inatividade')} 
+                            onClick={handleSaveReengagement}
                             className="btn-primary text-sm"
                             disabled={!reengagementConfig.isActive}
                           >

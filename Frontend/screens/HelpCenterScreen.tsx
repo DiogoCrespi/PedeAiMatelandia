@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../types';
 import { ChevronLeftIcon, WhatsappIcon, EmailIcon, PaperAirplaneIcon, CheckCircleIcon } from '../icons';
+import * as api from '../api';
 
 interface HelpCenterScreenProps {
   user: User;
@@ -13,17 +14,21 @@ const HelpCenterScreen: React.FC<HelpCenterScreenProps> = ({ user }) => {
   const [message, setMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (subject && message) {
-      // Simulate API call
-      console.log({
-        name: user.name,
-        email: user.email,
-        subject,
-        message,
-      });
-      setSubmitted(true);
+      try {
+        await api.submitHelpRequest({
+          name: user.name,
+          email: user.email,
+          subject,
+          message,
+        });
+        setSubmitted(true);
+      } catch (error) {
+        console.error("Failed to submit help request:", error);
+        alert('Ocorreu um erro ao enviar sua solicitação. Tente novamente.');
+      }
     } else {
       alert('Por favor, selecione um assunto e escreva sua mensagem.');
     }

@@ -1,8 +1,7 @@
 
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Order, OrderStatus, DeliveryType, CartItem, Product, SelectedProductOption, Address, Table } from '../../types';
-import { MOCK_ORDERS, MOCK_PRODUCTS, MOCK_RESTAURANTS, MOCK_USER, MOCK_TABLES } from '../../data';
+import { Order, OrderStatus, DeliveryType, CartItem, Product, SelectedProductOption, Address, Table, Restaurant } from '../../types';
+import * as api from '../../api';
 import { 
     PlusIcon, PhoneIcon, ComputerDesktopIcon, PrinterIcon, XMarkIcon, 
     TrashIcon, PencilIcon, DeliveryScooterIcon, PickupBuildingIcon, SearchIcon, ChevronDownIcon, CheckCircleIcon, XCircleIcon,
@@ -257,7 +256,8 @@ const CreateOrderModal: React.FC<{
   onClose: () => void;
   onCreateOrder: (order: Order) => void;
   tables: Table[];
-}> = ({ isOpen, onClose, onCreateOrder, tables }) => {
+  allProducts: Product[];
+}> = ({ isOpen, onClose, onCreateOrder, tables, allProducts }) => {
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [deliveryType, setDeliveryType] = useState<DeliveryType>('PICKUP');
@@ -284,10 +284,10 @@ const CreateOrderModal: React.FC<{
 
     const filteredProducts = useMemo(() => {
         if (!productSearch) return [];
-        return MOCK_PRODUCTS.filter(p =>
+        return allProducts.filter(p =>
             p.name.toLowerCase().includes(productSearch.toLowerCase())
         );
-    }, [productSearch]);
+    }, [productSearch, allProducts]);
 
     const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.totalPrice, 0), [cart]);
     const deliveryFee = deliveryType === 'DELIVERY' ? 5.00 : 0; // Fixed fee for local orders
@@ -327,19 +327,20 @@ const CreateOrderModal: React.FC<{
         setCart(prev => prev.filter((_, i) => i !== index));
     }
     
-    const handleCreateOrder = () => {
+    const handleCreateOrder = async () => {
         if (!customerName || cart.length === 0) {
             alert("Nome do cliente e pelo menos um item são obrigatórios.");
             return;
         }
 
         const table = selectedTableId ? tables.find(t => t.id === selectedTableId) : null;
+        const restaurant = await api.getRestaurantById('rest1');
 
         const newOrder: Order = {
             id: `local-${Date.now()}`,
             userId: 'local',
             restaurantId: 'rest1',
-            restaurantName: MOCK_RESTAURANTS[0].name,
+            restaurantName: restaurant?.name || 'Burguer Queen',
             items: cart,
             subtotal,
             deliveryFee,
@@ -541,14 +542,13 @@ const ProductSelectorItem: React.FC<{product: Product; onSelect: Function}> = ({
     )
 }
 
-interface CompanyDashboardScreenProps {
-  isStoreOpen: boolean;
-  onToggleStoreOpen: () => void;
-}
-
-const CompanyDashboardScreen: React.FC<CompanyDashboardScreenProps> = ({ isStoreOpen, onToggleStoreOpen }) => {
-  const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
-  const [tables, setTables] = useState<Table[]>(MOCK_TABLES);
+const CompanyDashboardScreen: React.FC = () => {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [tables, setTables] = useState<Table[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isStoreOpen, setIsStoreOpen] = useState(true);
+  
   const [activeColumns] = useState<OrderStatus[]>([OrderStatus.PLACED, OrderStatus.PREPARING, OrderStatus.READY, OrderStatus.OUT_FOR_DELIVERY]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -556,44 +556,52 @@ const CompanyDashboardScreen: React.FC<CompanyDashboardScreenProps> = ({ isStore
   const [draggingOverColumn, setDraggingOverColumn] = useState<OrderStatus | null>(null);
   const [isDraggingOverCompleted, setIsDraggingOverCompleted] = useState(false);
   
-  const updateLocalTableStatus = useCallback((tableId: string, status: Table['status'], orderId?: string) => {
-    setTables(prevTables => prevTables.map(t => 
-        t.id === tableId ? { ...t, status, currentOrderId: status === 'Livre' ? undefined : (orderId || t.currentOrderId) } : t
-    ));
+  const updateLocalTableStatus = useCallback(async (tableId: string, status: Table['status'], orderId?: string) => {
+    try {
+        await api.updateTableStatus(tableId, status, orderId);
+        setTables(prevTables => prevTables.map(t => 
+            t.id === tableId ? { ...t, status, currentOrderId: status === 'Livre' ? undefined : (orderId || t.currentOrderId) } : t
+        ));
+    } catch(error) {
+        console.error("Failed to update table status", error);
+        alert("Erro ao atualizar status da mesa.");
+    }
   }, []);
 
   useEffect(() => {
-    const newOrderSound = new Audio('data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaXRyYXRlCTEyOCBrYnBzAAAAAAAAAAAASW5mbwAAAA8AAAAFAAAAASwAAMPVAAA1QAAAAPgAZGZmp945Yk9jZlpjTTNBTd2g2tBwAANIAAAAAINm/9k=');
-
-    const timeoutId = setTimeout(() => {
-        const newOrder: Order = {
-            id: `order-${Date.now()}`,
-            userId: 'user1',
-            restaurantId: 'rest1',
-            restaurantName: 'Burguer Queen',
-            items: [{
-                product: MOCK_PRODUCTS[0],
-                quantity: 1,
-                totalPrice: MOCK_PRODUCTS[0].price,
-            }],
-            subtotal: MOCK_PRODUCTS[0].price,
-            deliveryFee: 5.00,
-            discount: 0,
-            total: MOCK_PRODUCTS[0].price + 5.00,
-            status: OrderStatus.PLACED,
-            deliveryAddress: { id: 'addr1', street: 'Rua Teste', number: '123', neighborhood: 'Bairro', city: 'Matelândia', state: 'PR', zip: '85887-000' },
-            paymentMethod: 'Pix',
-            createdAt: new Date().toISOString(),
-            deliveryType: 'DELIVERY',
-            isLocal: false,
-            customerName: 'Novo Cliente App',
-        };
-        setOrders(prev => [newOrder, ...prev]);
-        newOrderSound.play().catch(e => console.error("Erro ao reproduzir som:", e));
-    }, 20000); // New order every 20 seconds for demo
-
-    return () => clearTimeout(timeoutId);
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const [ordersData, tablesData, productsData, restaurantData] = await Promise.all([
+                api.getOrders(),
+                api.getTables(),
+                api.getProducts(),
+                api.getRestaurantById('rest1')
+            ]);
+            setOrders(ordersData);
+            setTables(tablesData);
+            setAllProducts(productsData);
+            setIsStoreOpen(restaurantData?.isStoreOpenManually ?? true);
+        } catch (e) {
+            console.error("Failed to fetch dashboard data:", e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    fetchData();
   }, []);
+
+  const handleToggleStoreOpen = async () => {
+    const newStatus = !isStoreOpen;
+    setIsStoreOpen(newStatus);
+    try {
+        await api.updateRestaurant('rest1', { isStoreOpenManually: newStatus });
+    } catch(e) {
+        console.error("Failed to update store status:", e);
+        setIsStoreOpen(!newStatus);
+        alert("Erro ao atualizar status da loja.");
+    }
+  }
 
   const { activeOrders, completedOrders } = useMemo(() => {
         const active: Order[] = [];
@@ -625,23 +633,35 @@ const CompanyDashboardScreen: React.FC<CompanyDashboardScreenProps> = ({ isStore
   };
 
 
-  const updateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
-    let orderToUpdate: Order | undefined;
-    setOrders(prev => prev.map(o => {
-      if (o.id === orderId) {
-        orderToUpdate = o;
-        return { ...o, status: newStatus, trackingLog: [...(o.trackingLog || []), { status: newStatus, timestamp: new Date().toISOString() }] };
-      }
-      return o;
-    }));
-    
-    if (newStatus === OrderStatus.DELIVERED || newStatus === OrderStatus.CANCELLED) {
-        if (orderToUpdate?.tableId) {
-            updateLocalTableStatus(orderToUpdate.tableId, 'Livre');
+  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+    const originalOrders = [...orders];
+    let orderToUpdate: Order | undefined = originalOrders.find(o => o.id === orderId);
+
+    if (!orderToUpdate) return;
+
+    const updatedOrderData = {
+        ...orderToUpdate,
+        status: newStatus,
+        trackingLog: [...(orderToUpdate.trackingLog || []), { status: newStatus, timestamp: new Date().toISOString() }]
+    };
+
+    setOrders(prev => prev.map(o => o.id === orderId ? updatedOrderData : o));
+
+    try {
+        await api.updateOrder(orderId, { status: newStatus, trackingLog: updatedOrderData.trackingLog });
+
+        if (newStatus === OrderStatus.DELIVERED || newStatus === OrderStatus.CANCELLED) {
+            if (orderToUpdate.tableId) {
+                await updateLocalTableStatus(orderToUpdate.tableId, 'Livre');
+            }
+            setSelectedOrder(null);
+        } else {
+            setSelectedOrder(updatedOrderData);
         }
-        setSelectedOrder(null);
-    } else {
-        setSelectedOrder(prev => (prev && prev.id === orderId ? { ...prev, status: newStatus } : prev));
+    } catch (error) {
+        console.error("Failed to update order status:", error);
+        setOrders(originalOrders);
+        alert("Erro ao atualizar o status do pedido.");
     }
   };
   
@@ -649,10 +669,16 @@ const CompanyDashboardScreen: React.FC<CompanyDashboardScreenProps> = ({ isStore
     updateOrderStatus(orderId, OrderStatus.CANCELLED);
   }
 
-  const handleCreateOrder = (order: Order) => {
-    setOrders(prev => [order, ...prev]);
-    if (order.tableId) {
-      updateLocalTableStatus(order.tableId, 'Ocupada', order.id);
+  const handleCreateOrder = async (order: Order) => {
+    try {
+        const newOrder = await api.placeOrder(order);
+        setOrders(prev => [newOrder, ...prev]);
+        if (order.tableId) {
+          updateLocalTableStatus(order.tableId, 'Ocupada', order.id);
+        }
+    } catch (error) {
+        console.error("Failed to create order:", error);
+        alert("Erro ao criar pedido.");
     }
   };
 
@@ -696,6 +722,14 @@ const CompanyDashboardScreen: React.FC<CompanyDashboardScreenProps> = ({ isStore
     setIsDraggingOverCompleted(false);
   };
 
+  if (isLoading) {
+    return (
+        <div className="flex h-full bg-gray-100 items-center justify-center">
+            <div className="w-16 h-16 border-4 border-t-transparent border-gray-800 rounded-full animate-spin"></div>
+        </div>
+    );
+  }
+
   return (
     <div className="flex h-full bg-gray-100">
       <style>{`.btn-primary { background-color: #1f2937; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: background-color 0.2s; } .btn-primary:hover { background-color: #374151; } .btn-secondary { background-color: white; color: #1f2937; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; border: 1px solid #d1d5db; transition-property: color, background-color, border-color; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; } .btn-secondary:hover { background-color: #f3f4f6; } .input { border: 1px solid #d1d5db; border-radius: 0.375rem; width: 100%; color: #1f2937; } .input:focus { ring: 1; border-color: #1f2937; outline:none; }`}</style>
@@ -707,7 +741,7 @@ const CompanyDashboardScreen: React.FC<CompanyDashboardScreenProps> = ({ isStore
                     <span className={`font-semibold text-sm ${isStoreOpen ? 'text-green-600' : 'text-red-600'}`}>
                         {isStoreOpen ? 'Loja Aberta' : 'Loja Fechada'}
                     </span>
-                    <ToggleSwitch checked={isStoreOpen} onChange={onToggleStoreOpen} />
+                    <ToggleSwitch checked={isStoreOpen} onChange={handleToggleStoreOpen} />
                 </div>
                 <button 
                 onClick={() => setIsCreateModalOpen(true)}
@@ -799,6 +833,7 @@ const CompanyDashboardScreen: React.FC<CompanyDashboardScreenProps> = ({ isStore
         onClose={() => setIsCreateModalOpen(false)}
         onCreateOrder={handleCreateOrder}
         tables={tables}
+        allProducts={allProducts}
       />
 
     </div>

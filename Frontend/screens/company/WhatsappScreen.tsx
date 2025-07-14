@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MOCK_CONVERSATIONS, MOCK_MESSAGE_HISTORY } from '../../data';
+import * as api from '../../api';
 import { MockConversation, ChatMessage } from '../../types';
 import { PaperAirplaneIcon, Cog6ToothIcon } from '../../icons';
 import { ROUTE_PATHS } from '../../constants';
@@ -78,7 +78,30 @@ const ConversationItem: React.FC<{ conversation: MockConversation, onClick: () =
 
 const WhatsappScreen: React.FC = () => {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<MockConversation[]>([]);
+  const [messageHistory, setMessageHistory] = useState<Record<string, ChatMessage[]>>({});
+  const [isLoading, setIsLoading] = useState(true);
+
   const qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://web.whatsapp.com/&bgcolor=F9FAFB&color=1F2937&qzone=1";
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [convos, history] = await Promise.all([
+          api.getConversations(),
+          api.getMessageHistory()
+        ]);
+        setConversations(convos);
+        setMessageHistory(history);
+      } catch (error) {
+        console.error("Failed to fetch WhatsApp data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const handleConversationClick = (id: string) => {
     setActiveConversationId(prevId => prevId === id ? null : id);
@@ -123,9 +146,11 @@ const WhatsappScreen: React.FC = () => {
       <section>
         <h2 className="text-xl font-bold text-gray-800 mb-4">Conversas</h2>
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {MOCK_CONVERSATIONS.length > 0 ? (
+          {isLoading ? (
+             <div className="text-center p-12 text-gray-500">Carregando conversas...</div>
+          ) : conversations.length > 0 ? (
             <div>
-              {MOCK_CONVERSATIONS.map(convo => (
+              {conversations.map(convo => (
                 <div key={convo.id}>
                   <ConversationItem
                     conversation={convo}
@@ -133,7 +158,7 @@ const WhatsappScreen: React.FC = () => {
                     isActive={activeConversationId === convo.id}
                   />
                   {activeConversationId === convo.id && (
-                    <ConversationDetail history={MOCK_MESSAGE_HISTORY[convo.id] || []} />
+                    <ConversationDetail history={messageHistory[convo.id] || []} />
                   )}
                 </div>
               ))}

@@ -1,36 +1,16 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
-const master = {
-  host: process.env.DB_MASTER_HOST || 'localhost',
-  username: process.env.DB_USER || 'admin',
-  password: process.env.DB_PASSWORD || 'adminpass',
-  database: process.env.DB_NAME || 'delivery',
-  dialect: 'postgres',
-  port: process.env.DB_MASTER_PORT || 5432,
-};
-
-const slave = {
-  host: process.env.DB_SLAVE_HOST || 'localhost',
-  username: process.env.DB_USER || 'admin',
-  password: process.env.DB_PASSWORD || 'adminpass',
-  database: process.env.DB_NAME || 'delivery',
-  dialect: 'postgres',
-  port: process.env.DB_SLAVE_PORT || 5433,
-};
-
-const sequelize = new Sequelize({
-  replication: {
-    read: [slave],
-    write: master,
-  },
-  dialect: 'postgres', // Adicionado para evitar erro de dialeto
-  pool: {
-    max: 20,
-    idle: 30000,
-    acquire: 60000,
-  },
-  logging: false,
-});
+const sequelize = new Sequelize(
+  process.env.DB_NAME || 'delivery',
+  process.env.DB_USER || 'admin',
+  process.env.DB_PASSWORD || 'adminpass',
+  {
+    host: process.env.DB_HOST || 'localhost',
+    dialect: 'postgres',
+    port: 5432,
+    logging: false,
+  }
+);
 
 module.exports = sequelize; 

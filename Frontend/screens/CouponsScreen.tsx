@@ -1,3 +1,5 @@
+
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Coupon } from '../types';
@@ -5,17 +7,18 @@ import { ChevronLeftIcon, TicketIcon } from '../icons';
 
 interface CouponsScreenProps {
   userCoupons: Coupon[];
-  onAddCoupon: (code: string) => void;
+  onAddCoupon: (code: string) => Promise<void>;
+  isLoading: boolean;
 }
 
-const CouponsScreen: React.FC<CouponsScreenProps> = ({ userCoupons, onAddCoupon }) => {
+const CouponsScreen: React.FC<CouponsScreenProps> = ({ userCoupons, onAddCoupon, isLoading }) => {
   const navigate = useNavigate();
   const [couponCode, setCouponCode] = useState('');
 
-  const handleAddClick = (e: React.FormEvent) => {
+  const handleAddClick = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (couponCode.trim()) {
-      onAddCoupon(couponCode.trim());
+    if (couponCode.trim() && !isLoading) {
+      await onAddCoupon(couponCode.trim());
       setCouponCode('');
     }
   };
@@ -52,8 +55,12 @@ const CouponsScreen: React.FC<CouponsScreenProps> = ({ userCoupons, onAddCoupon 
               placeholder="Digite o código do cupom"
               className="flex-grow w-full px-3 py-2 border border-appBorderLight rounded-md focus:ring-appTextPrimary focus:border-appTextPrimary bg-white text-appTextPrimary placeholder-appTextSecondary uppercase"
             />
-            <button type="submit" className="px-4 py-2 bg-appPrimaryActionBg text-appPrimaryActionText rounded-lg font-semibold hover:opacity-90 transition-opacity">
-              Adicionar
+            <button
+              type="submit"
+              className="px-4 py-2 bg-appPrimaryActionBg text-appPrimaryActionText rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+              disabled={isLoading || !couponCode.trim()}
+            >
+              {isLoading ? 'Adicionando...' : 'Adicionar'}
             </button>
           </div>
         </form>

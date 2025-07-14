@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CartItem, DeliveryType, Coupon, SelectedProductOption, Restaurant } from '../types';
@@ -10,7 +11,7 @@ import {
   MinusIcon,
   CartIcon
 } from '../icons';
-import CouponInputForm from './CouponInputForm';
+import CouponInputForm from '../components/CouponInputForm';
 
 
 interface SideCartProps {
@@ -133,7 +134,7 @@ const SideCart: React.FC<SideCartProps> = ({ isOpen, onClose, cartItems, updateC
 
                 {/* Coupon */}
                 <div className="bg-white p-3 rounded-lg border border-appBorderLight">
-                    <CouponInputForm
+                    <CouponInputForm 
                        appliedCoupon={appliedCoupon}
                        error={couponError}
                        onApply={onApplyCoupon}

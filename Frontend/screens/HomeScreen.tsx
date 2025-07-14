@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Category, PromotionBanner, Restaurant } from '../types';
 import { ROUTE_PATHS } from '../constants';
-import { MOCK_CATEGORIES, MOCK_PROMOTIONS, MOCK_RESTAURANTS } from '../data';
+import * as api from '../api';
 import { ChevronLeftIcon, ChevronRightIcon } from '../icons';
 import RestaurantCard from '../components/RestaurantCard';
 import InfoFooter from '../components/InfoFooter';
@@ -20,22 +19,44 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ favoriteRestaurants, onToggleFa
   const [categories, setCategories] = useState<Category[]>([]);
   const [openRestaurants, setOpenRestaurants] = useState<Restaurant[]>([]);
   const [closedRestaurants, setClosedRestaurants] = useState<Restaurant[]>([]);
+  const [orderAgainRestaurants, setOrderAgainRestaurants] = useState<Restaurant[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setPromotions(MOCK_PROMOTIONS); // Use all promotions for the carousel
-    setCategories(MOCK_CATEGORIES);
-    // Simulate some restaurants being "closed" for the new section
-    const allRestaurants = MOCK_RESTAURANTS;
-    const closedRestIds = ['rest3', 'rest4']; // Example: Ponto do Sushi and Doces da Vovó are closed
-    
-    setOpenRestaurants(allRestaurants.filter(r => !closedRestIds.includes(r.id)));
-    setClosedRestaurants(allRestaurants.filter(r => closedRestIds.includes(r.id)));
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [
+          promoData,
+          categoryData,
+          openRestaurantsData,
+          closedRestaurantsData,
+          orderAgainData,
+        ] = await Promise.all([
+          api.getPromotions(),
+          api.getCategories(),
+          api.getOpenRestaurants(),
+          api.getClosedRestaurants(),
+          api.getOrderAgainRestaurants(),
+        ]);
+        
+        setPromotions(promoData);
+        setCategories(categoryData);
+        setOrderAgainRestaurants(orderAgainData);
+        setOpenRestaurants(openRestaurantsData);
+        setClosedRestaurants(closedRestaurantsData);
 
-    if (MOCK_CATEGORIES.length > 0) {
-        setActiveCategory(MOCK_CATEGORIES[0].id); // Set first category as active initially
-    }
+        if (categoryData.length > 0) {
+          setActiveCategory(categoryData[0].id);
+        }
+      } catch (error) {
+        console.error("Failed to fetch home screen data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   // --- Carousel Logic ---
@@ -66,9 +87,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ favoriteRestaurants, onToggleFa
   }, [promotions.length, isHovering, handleNext]);
 
 
-  // Mock data for "Peça de Novo" - using first 2 restaurants from MOCK_RESTAURANTS for simplicity
-  const orderAgainRestaurants = MOCK_RESTAURANTS.slice(0, 2);
-
+  if (isLoading) {
+    return (
+        <div className="flex items-center justify-center h-96">
+            <div className="w-16 h-16 border-4 border-t-transparent border-appTextSecondary rounded-full animate-spin"></div>
+        </div>
+    );
+  }
 
   return (
     <div className="flex flex-col w-full flex-1">
@@ -162,6 +187,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ favoriteRestaurants, onToggleFa
                 restaurant={restaurant}
                 isFavorited={favoriteRestaurants.includes(restaurant.id)}
                 onToggleFavorite={onToggleFavorite}
+                isClosed={restaurant.isStoreOpenManually === false}
               />
             ))}
           </div>

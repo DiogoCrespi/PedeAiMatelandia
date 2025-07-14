@@ -1,11 +1,15 @@
 
-import React from 'react';
+
+
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CartItem, SelectedProductOption, DeliveryType } from '../types';
+import { CartItem, SelectedProductOption, DeliveryType, Restaurant, Coupon } from '../types';
 import { ROUTE_PATHS } from '../constants';
-import { MOCK_RESTAURANTS } from '../data';
+import * as api from '../api';
 import { PlusIcon, MinusIcon, TrashIcon, CartIcon } from '../icons';
 import DeliveryTypeSelector from '../components/DeliveryTypeSelector';
+import CouponInputForm from '../components/CouponInputForm';
+
 
 interface CartScreenProps {
   cartItems: CartItem[];
@@ -14,10 +18,26 @@ interface CartScreenProps {
   clearCart: () => void;
   deliveryType: DeliveryType;
   onDeliveryTypeChange: (type: DeliveryType) => void;
+  appliedCoupon: Coupon | null;
+  couponError: string;
+  onApplyCoupon: (code: string) => void;
+  onRemoveCoupon: () => void;
+  isCouponLoading: boolean;
 }
 
-const CartScreen: React.FC<CartScreenProps> = ({ cartItems, updateCartItemQuantity, removeFromCart, clearCart, deliveryType, onDeliveryTypeChange }) => {
+const CartScreen: React.FC<CartScreenProps> = ({ cartItems, updateCartItemQuantity, removeFromCart, clearCart, deliveryType, onDeliveryTypeChange, appliedCoupon, couponError, onApplyCoupon, onRemoveCoupon, isCouponLoading }) => {
   const navigate = useNavigate();
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+
+  const restaurantId = cartItems[0]?.product.restaurantId;
+
+  useEffect(() => {
+    if (restaurantId) {
+      api.getRestaurantById(restaurantId).then(data => {
+        setRestaurant(data || null);
+      });
+    }
+  }, [restaurantId]);
 
   if (cartItems.length === 0) {
     return (
@@ -35,13 +55,19 @@ const CartScreen: React.FC<CartScreenProps> = ({ cartItems, updateCartItemQuanti
     );
   }
 
-  const restaurantId = cartItems[0]?.product.restaurantId;
-  const restaurant = MOCK_RESTAURANTS.find(r => r.id === restaurantId);
-
   const subtotal = cartItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const deliveryFee = deliveryType === 'DELIVERY' ? (restaurant?.deliveryFee ?? 5.00) : 0;
-  const discount = 0; 
-  const total = subtotal + deliveryFee - discount;
+  
+  let discount = 0;
+  if (appliedCoupon) {
+    if (appliedCoupon.discountType === 'fixed') {
+        discount = appliedCoupon.discountValue;
+    } else { // percentage
+        discount = subtotal * (appliedCoupon.discountValue / 100);
+    }
+  }
+
+  const total = Math.max(0, subtotal + deliveryFee - discount);
 
   const handleClearCart = () => {
     if (window.confirm("Tem certeza que deseja limpar o carrinho?")) {
@@ -112,6 +138,17 @@ const CartScreen: React.FC<CartScreenProps> = ({ cartItems, updateCartItemQuanti
       >
         Adicionar mais itens
       </button>
+      
+      <div className="bg-white p-4 rounded-lg shadow-sm space-y-3 border border-appBorderLight">
+        <h2 className="text-lg font-semibold text-appTextPrimary mb-2">Cupom de Desconto</h2>
+         <CouponInputForm
+            appliedCoupon={appliedCoupon}
+            error={couponError}
+            onApply={onApplyCoupon}
+            onRemove={onRemoveCoupon}
+            isLoading={isCouponLoading}
+        />
+      </div>
 
       <div className="bg-white p-4 rounded-lg shadow-sm space-y-2 border border-appBorderLight">
         <h2 className="text-lg font-semibold text-appTextPrimary mb-2">Resumo</h2>
@@ -130,10 +167,12 @@ const CartScreen: React.FC<CartScreenProps> = ({ cartItems, updateCartItemQuanti
                 <span className="text-green-600 font-semibold">Grátis</span>
             </div>
         )}
-        <div className="flex justify-between text-sm text-appTextSecondary">
-          <Link to={ROUTE_PATHS.COUPONS} className="text-appTextPrimary hover:underline">Aplicar cupom</Link>
-          {discount > 0 ? <span className="text-red-500">- R$ {discount.toFixed(2)}</span> : <span className="text-appTextSecondary">-</span> }
-        </div>
+        {discount > 0 && (
+          <div className="flex justify-between text-sm text-red-500">
+            <span>Desconto Cupom</span>
+            <span>- R$ {discount.toFixed(2)}</span>
+          </div>
+        )}
         <hr className="my-2 border-appBorderLight"/>
         <div className="flex justify-between text-lg font-bold text-appTextPrimary">
           <span>Total</span>

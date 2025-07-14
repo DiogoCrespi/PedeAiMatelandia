@@ -1,11 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Client } from '../../types';
-import { MOCK_CLIENTS } from '../../data';
+import * as api from '../../api';
 import { PlusIcon, TrashIcon, PencilIcon, XMarkIcon, UserGroupIcon as PageIcon, DocumentArrowUpIcon, SparklesIcon, DocumentPlusIcon, DocumentTextIcon } from '../../icons';
-// import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
-// const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
 
 // Modal for Adding/Editing individual Clients
@@ -16,7 +16,7 @@ const ClientModal: React.FC<{
   clientToEdit: Client | null;
 }> = ({ isOpen, onClose, onSave, clientToEdit }) => {
   const emptyClient: Omit<Client, 'id' | 'createdAt' | 'orderCount'| 'lastOrder'> = { name: '', phone: '', email: '', address: '' };
-  const [client, setClient] = useState(clientToEdit || emptyClient);
+  const [client, setClient] = useState<Partial<Client>>(clientToEdit || emptyClient);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -33,17 +33,7 @@ const ClientModal: React.FC<{
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (clientToEdit) {
-      onSave(client as Client);
-    } else {
-      onSave({
-        ...client,
-        id: `client-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        orderCount: 0
-      } as Client);
-    }
-    onClose();
+    onSave(client as Client);
   };
 
   return (
@@ -128,7 +118,7 @@ const ClientImportModal: React.FC<{
     const [isGenerating, setIsGenerating] = useState(false);
     const [parsedClients, setParsedClients] = useState<ParsedClient[] | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const resetState = () => {
         setSelectedFile(null);
@@ -174,39 +164,39 @@ const ClientImportModal: React.FC<{
             const base64Data = filePreview.url.split(',')[1];
             const prompt = `Analise a imagem ou arquivo CSV fornecido. Extraia uma lista de clientes. Para cada cliente, extraia o nome completo, telefone, e-mail e endereço. Retorne um array JSON válido. Cada objeto no array deve ter as chaves: "name" (string), "phone" (string), "email" (string, opcional, pode ser vazio) e "address" (string, opcional, pode ser vazio).`;
 
-            // const response = await genAI.models.generateContent({
-            //     model: 'gemini-2.5-flash',
-            //     contents: [{
-            //       text: prompt
-            //     }, {
-            //       inlineData: {
-            //         mimeType: selectedFile.type,
-            //         data: base64Data,
-            //       },
-            //     }],
-            //      config: {
-            //         responseMimeType: "application/json",
-            //      }
-            // });
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: [{
+                  text: prompt
+                }, {
+                  inlineData: {
+                    mimeType: selectedFile.type,
+                    data: base64Data,
+                  },
+                }],
+                 config: {
+                    responseMimeType: "application/json",
+                 }
+            });
 
-            // let jsonStr = response.text.trim();
-            // const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
-            // const match = jsonStr.match(fenceRegex);
-            // if (match && match[2]) {
-            //   jsonStr = match[2].trim();
-            // }
+            let jsonStr = response.text.trim();
+            const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
+            const match = jsonStr.match(fenceRegex);
+            if (match && match[2]) {
+              jsonStr = match[2].trim();
+            }
 
-            // const parsedData: any[] = JSON.parse(jsonStr);
-            // if (!Array.isArray(parsedData)) throw new Error("A resposta da IA não foi um array.");
+            const parsedData: any[] = JSON.parse(jsonStr);
+            if (!Array.isArray(parsedData)) throw new Error("A resposta da IA não foi um array.");
 
-            // const clients: ParsedClient[] = parsedData.map(item => ({
-            //     name: item.name || '',
-            //     phone: item.phone || '',
-            //     email: item.email || '',
-            //     address: item.address || '',
-            //     included: true,
-            // }));
-            // setParsedClients(clients);
+            const clients: ParsedClient[] = parsedData.map(item => ({
+                name: item.name || '',
+                phone: item.phone || '',
+                email: item.email || '',
+                address: item.address || '',
+                included: true,
+            }));
+            setParsedClients(clients);
 
         } catch (e) {
             console.error("Erro ao processar a lista de clientes:", e);
@@ -339,42 +329,69 @@ const OnboardingCard: React.FC<{icon: React.ElementType, title: string, descript
 
 
 const ClientsScreen: React.FC = () => {
-    const [clients, setClients] = useState<Client[]>(MOCK_CLIENTS);
+    const [clients, setClients] = useState<Client[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState<Client | null>(null);
+
+    useEffect(() => {
+        const fetchClients = async () => {
+            setIsLoading(true);
+            try {
+                const data = await api.getClients();
+                setClients(data);
+            } catch (error) {
+                console.error("Failed to fetch clients:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchClients();
+    }, []);
 
     const handleOpenModal = (client: Client | null = null) => {
         setEditingClient(client);
         setIsModalOpen(true);
     };
 
-    const handleSaveClient = (clientData: Client) => {
-        const isEditing = clients.some(c => c.id === clientData.id);
-        if (isEditing) {
-            setClients(prev => prev.map(c => c.id === clientData.id ? clientData : c));
-        } else {
-            setClients(prev => [clientData, ...prev]);
+    const handleSaveClient = async (clientData: Client) => {
+        try {
+            if (editingClient) {
+                const updatedClient = await api.updateClient(clientData);
+                setClients(prev => prev.map(c => (c.id === updatedClient.id ? updatedClient : c)));
+            } else {
+                const newClient = await api.addClient(clientData);
+                setClients(prev => [newClient, ...prev]);
+            }
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error("Failed to save client:", error);
+            alert("Erro ao salvar cliente.");
         }
-        setIsModalOpen(false);
     };
 
-    const handleDeleteClient = (id: string) => {
+    const handleDeleteClient = async (id: string) => {
         if (window.confirm("Tem certeza que deseja excluir este cliente?")) {
-            setClients(prev => prev.filter(c => c.id !== id));
+            try {
+                await api.deleteClient(id);
+                setClients(prev => prev.filter(c => c.id !== id));
+            } catch (error) {
+                console.error("Failed to delete client:", error);
+                alert("Erro ao excluir cliente.");
+            }
         }
     };
     
-    const handleImportClients = (importedClients: Omit<Client, 'id' | 'createdAt' | 'orderCount' | 'lastOrder'>[]) => {
-        const newClients = importedClients.map(c => ({
-            ...c,
-            id: `client-${Date.now()}-${Math.random()}`,
-            createdAt: new Date().toISOString(),
-            orderCount: 0,
-            lastOrder: undefined
-        }));
-        setClients(prev => [...newClients, ...prev]);
-        alert(`${newClients.length} clientes importados com sucesso!`);
+    const handleImportClients = async (importedClients: Omit<Client, 'id' | 'createdAt' | 'orderCount' | 'lastOrder'>[]) => {
+        try {
+            const newClients = await api.importClients(importedClients);
+            setClients(prev => [...newClients, ...prev]);
+            alert(`${newClients.length} clientes importados com sucesso!`);
+        } catch (error) {
+            console.error("Failed to import clients:", error);
+            alert("Erro ao importar clientes.");
+        }
     };
 
     return (
@@ -416,6 +433,9 @@ const ClientsScreen: React.FC = () => {
                     </button>
                 </div>
                 <div className="overflow-x-auto">
+                   {isLoading ? (
+                     <div className="p-12 text-center text-gray-500">Carregando clientes...</div>
+                   ) : (
                     <table className="w-full min-w-max">
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
@@ -445,7 +465,8 @@ const ClientsScreen: React.FC = () => {
                             ))}
                         </tbody>
                     </table>
-                    {clients.length === 0 && (
+                   )}
+                    {!isLoading && clients.length === 0 && (
                         <div className="text-center py-12">
                              <PageIcon className="mx-auto h-12 w-12 text-gray-400" />
                             <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum cliente cadastrado</h3>

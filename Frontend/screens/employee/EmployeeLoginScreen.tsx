@@ -1,18 +1,21 @@
+
+
 import React, { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Employee } from '../../types';
 import { LogoIcon, ArrowUturnLeftIcon } from '../../icons';
+import { ROUTE_PATHS } from '../../constants';
 
 interface EmployeeLoginScreenProps {
-  employees: Employee[];
-  onLogin: (employee: Employee) => void;
+  onLogin: (pin: string) => Promise<boolean>;
 }
 
-const EmployeeLoginScreen: React.FC<EmployeeLoginScreenProps> = ({ employees, onLogin }) => {
+const EmployeeLoginScreen: React.FC<EmployeeLoginScreenProps> = ({ onLogin }) => {
   const [searchParams] = useSearchParams();
   const [companyCode, setCompanyCode] = useState(searchParams.get('company') || '');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const navigate = useNavigate();
 
   const handlePinClick = (digit: string) => {
@@ -29,29 +32,32 @@ const EmployeeLoginScreen: React.FC<EmployeeLoginScreenProps> = ({ employees, on
       setPin('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (pin.length !== 4) return;
+
     setError('');
+    setIsLoggingIn(true);
     
-    // In a real app, you would validate the company code. Here we just check the PIN.
-    const employee = employees.find(emp => emp.pin === pin);
-    if (employee) {
-      onLogin(employee);
-    } else {
+    // In a real app, you would validate the company code.
+    const loginSuccess = await onLogin(pin);
+    
+    if (!loginSuccess) {
       setError('PIN inválido. Tente novamente.');
       setPin('');
     }
+    setIsLoggingIn(false);
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-800 p-4 text-white relative">
       <button
-        onClick={() => navigate(-1)}
+        onClick={() => navigate(ROUTE_PATHS.PROFILE)}
         className="absolute top-4 left-4 flex items-center gap-2 px-3 py-2 bg-gray-700/50 rounded-lg text-sm font-semibold hover:bg-gray-700 transition-colors z-10"
-        aria-label="Voltar para a tela anterior"
+        aria-label="Voltar para o Perfil"
       >
         <ArrowUturnLeftIcon className="w-5 h-5" />
-        <span>Voltar</span>
+        <span>Voltar para o App</span>
       </button>
 
       <div className="w-full max-w-sm text-center">
@@ -81,17 +87,17 @@ const EmployeeLoginScreen: React.FC<EmployeeLoginScreenProps> = ({ employees, on
           
           <div className="grid grid-cols-3 gap-3">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(d => (
-              <button key={d} type="button" onClick={() => handlePinClick(String(d))} className="h-20 bg-gray-700/50 rounded-lg text-3xl font-bold hover:bg-gray-600 transition-colors">
+              <button key={d} type="button" onClick={() => handlePinClick(String(d))} className="h-20 bg-gray-700/50 rounded-lg text-3xl font-bold hover:bg-gray-600 transition-colors disabled:opacity-50" disabled={isLoggingIn}>
                 {d}
               </button>
             ))}
-            <button type="button" onClick={handleClear} className="h-20 bg-gray-700/50 rounded-lg text-lg font-semibold hover:bg-gray-600 transition-colors">Limpar</button>
-            <button type="button" onClick={() => handlePinClick('0')} className="h-20 bg-gray-700/50 rounded-lg text-3xl font-bold hover:bg-gray-600 transition-colors">0</button>
-            <button type="button" onClick={handleDelete} className="h-20 bg-gray-700/50 rounded-lg text-lg font-semibold hover:bg-gray-600 transition-colors">Apagar</button>
+            <button type="button" onClick={handleClear} className="h-20 bg-gray-700/50 rounded-lg text-lg font-semibold hover:bg-gray-600 transition-colors disabled:opacity-50" disabled={isLoggingIn}>Limpar</button>
+            <button type="button" onClick={() => handlePinClick('0')} className="h-20 bg-gray-700/50 rounded-lg text-3xl font-bold hover:bg-gray-600 transition-colors disabled:opacity-50" disabled={isLoggingIn}>0</button>
+            <button type="button" onClick={handleDelete} className="h-20 bg-gray-700/50 rounded-lg text-lg font-semibold hover:bg-gray-600 transition-colors disabled:opacity-50" disabled={isLoggingIn}>Apagar</button>
           </div>
           
-          <button type="submit" disabled={pin.length !== 4} className="w-full mt-6 bg-green-600 text-white py-4 rounded-lg font-semibold text-lg hover:bg-green-500 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed">
-            Entrar
+          <button type="submit" disabled={pin.length !== 4 || isLoggingIn} className="w-full mt-6 bg-green-600 text-white py-4 rounded-lg font-semibold text-lg hover:bg-green-500 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed">
+            {isLoggingIn ? "Verificando..." : "Entrar"}
           </button>
         </form>
       </div>

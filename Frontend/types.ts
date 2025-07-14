@@ -1,5 +1,6 @@
 
 
+
 export type DeliveryType = 'DELIVERY' | 'PICKUP';
 
 export interface User {
@@ -74,8 +75,18 @@ export interface Restaurant {
     cnpj: string;
     paymentMethods: string[];
   };
+  whatsappConfig?: {
+    greetingMessage: string;
+    reengagementConfig?: {
+        isActive: boolean;
+        daysInactive: number;
+        message: string;
+    };
+  };
+  companyCode?: string;
   promotions?: string[]; // IDs or descriptions of promotions
   openingHours?: OpeningHour[];
+  isStoreOpenManually?: boolean;
 }
 
 export interface SelectedProductOption {

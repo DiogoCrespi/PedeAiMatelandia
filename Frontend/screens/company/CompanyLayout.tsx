@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { ROUTE_PATHS } from '../../constants';
-import { MOCK_RESTAURANTS } from '../../data';
+import * as api from '../../api';
+import { Restaurant } from '../../types';
 import {
   BuildingStorefrontIcon,
   ClipboardDocumentListIcon,
@@ -19,8 +20,13 @@ import {
 
 const CompanyLayout: React.FC = () => {
   const navigate = useNavigate();
-  const restaurant = MOCK_RESTAURANTS[0];
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+
+  useEffect(() => {
+    // In a real app, you would get the user's associated restaurant ID
+    api.getRestaurantById('rest1').then(data => setRestaurant(data || null));
+  }, []);
 
   const navItems = [
     { path: ROUTE_PATHS.COMPANY_DASHBOARD, label: 'Pedidos', icon: ClipboardDocumentListIcon },
@@ -51,7 +57,7 @@ const CompanyLayout: React.FC = () => {
               <BuildingStorefrontIcon className="w-6 h-6 text-white"/>
           </div>
           <div className={`whitespace-nowrap transition-opacity duration-200 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
-            <h2 className="font-bold text-base truncate">{restaurant.name}</h2>
+            <h2 className="font-bold text-base truncate">{restaurant?.name || 'Carregando...'}</h2>
             <p className="text-xs text-gray-400">Painel do Gestor</p>
           </div>
         </div>

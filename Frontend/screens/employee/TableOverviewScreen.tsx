@@ -1,20 +1,48 @@
-import React from 'react';
+
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Order } from '../../types';
+import * as api from '../../api';
 import TableCard from '../../components/TableCard';
 import { ROUTE_PATHS } from '../../constants';
 
-interface TableOverviewScreenProps {
-  tables: Table[];
-  orders: Order[];
-}
-
-const TableOverviewScreen: React.FC<TableOverviewScreenProps> = ({ tables, orders }) => {
+const TableOverviewScreen: React.FC = () => {
+  const [tables, setTables] = useState<Table[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const [tablesData, ordersData] = await Promise.all([
+                api.getTables(),
+                api.getOrders()
+            ]);
+            setTables(tablesData);
+            setOrders(ordersData);
+        } catch (error) {
+            console.error("Failed to fetch table overview data:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    fetchData();
+  }, []);
 
   const handleTableClick = (tableId: string) => {
     navigate(ROUTE_PATHS.EMPLOYEE_TABLE_DETAIL.replace(':tableId', tableId));
   };
+
+  if (isLoading) {
+    return (
+        <div className="flex h-full items-center justify-center bg-gray-900">
+            <div className="w-16 h-16 border-4 border-t-transparent border-gray-400 rounded-full animate-spin"></div>
+        </div>
+    );
+  }
 
   return (
     <div className="p-4 sm:p-6 bg-gray-900 min-h-full">

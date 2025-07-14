@@ -1,9 +1,10 @@
 
 
 
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { CompanyPromotion, Product, Category as CategoryType } from '../../types';
-import { MOCK_COMPANY_PROMOTIONS, MOCK_PRODUCTS, MOCK_CATEGORIES } from '../../data';
+import * as api from '../../api';
 import { PlusIcon, TrashIcon, PencilIcon, XMarkIcon, TagIcon } from '../../icons';
 
 // --- Reusable Components ---
@@ -19,7 +20,9 @@ const PromotionModal: React.FC<{
   onClose: () => void;
   onSave: (promotion: CompanyPromotion) => void;
   promotionToEdit: CompanyPromotion | null;
-}> = ({ isOpen, onClose, onSave, promotionToEdit }) => {
+  products: Product[];
+  categories: CategoryType[];
+}> = ({ isOpen, onClose, onSave, promotionToEdit, products, categories }) => {
     const emptyPromotion: CompanyPromotion = {
         id: `promo-${Date.now()}`,
         name: '', description: '', type: 'percentage', value: 0, isActive: true,
@@ -47,7 +50,6 @@ const PromotionModal: React.FC<{
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSave(promotion);
-        onClose();
     };
 
     return (
@@ -92,7 +94,7 @@ const PromotionModal: React.FC<{
                          <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Selecione as Categorias</label>
                             <select multiple value={promotion.applicableIds} onChange={handleApplicableIdsChange} className="w-full input h-32">
-                                {MOCK_CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                          </div>
                     )}
@@ -100,7 +102,7 @@ const PromotionModal: React.FC<{
                          <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Selecione os Produtos</label>
                             <select multiple value={promotion.applicableIds} onChange={handleApplicableIdsChange} className="w-full input h-32">
-                                {MOCK_PRODUCTS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
                          </div>
                     )}
@@ -116,33 +118,77 @@ const PromotionModal: React.FC<{
 
 // --- Main Screen ---
 const PromotionsScreen: React.FC = () => {
-    const [promotions, setPromotions] = useState<CompanyPromotion[]>(MOCK_COMPANY_PROMOTIONS);
+    const [promotions, setPromotions] = useState<CompanyPromotion[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<CategoryType[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPromotion, setEditingPromotion] = useState<CompanyPromotion | null>(null);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setIsLoading(true);
+            try {
+                const [promos, prods, cats] = await Promise.all([
+                    api.getCompanyPromotions(),
+                    api.getProducts(),
+                    api.getCategories()
+                ]);
+                setPromotions(promos);
+                setProducts(prods);
+                setCategories(cats);
+            } catch (error) {
+                console.error("Failed to fetch promotions data:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
 
     const handleOpenModal = (promo: CompanyPromotion | null = null) => {
         setEditingPromotion(promo);
         setIsModalOpen(true);
     };
 
-    const handleSavePromotion = (promo: CompanyPromotion) => {
-        const isEditing = promotions.some(p => p.id === promo.id);
-        if (isEditing) {
-            setPromotions(prev => prev.map(p => p.id === promo.id ? promo : p));
-        } else {
-            setPromotions(prev => [promo, ...prev]);
+    const handleSavePromotion = async (promo: CompanyPromotion) => {
+        try {
+            if (promotions.some(p => p.id === promo.id)) {
+                const updatedPromo = await api.updatePromotion(promo);
+                setPromotions(prev => prev.map(p => p.id === updatedPromo.id ? updatedPromo : p));
+            } else {
+                const newPromo = await api.addPromotion(promo);
+                setPromotions(prev => [newPromo, ...prev]);
+            }
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error("Failed to save promotion:", error);
+            alert("Erro ao salvar promoção.");
         }
-        setIsModalOpen(false);
     };
 
-    const handleDeletePromotion = (id: string) => {
+    const handleDeletePromotion = async (id: string) => {
         if (window.confirm("Tem certeza que deseja excluir esta promoção?")) {
-            setPromotions(prev => prev.filter(p => p.id !== id));
+            try {
+                await api.deletePromotion(id);
+                setPromotions(prev => prev.filter(p => p.id !== id));
+            } catch (error) {
+                console.error("Failed to delete promotion:", error);
+                alert("Erro ao excluir promoção.");
+            }
         }
     };
 
-    const handleToggleActive = (id: string, isActive: boolean) => {
-        setPromotions(prev => prev.map(p => p.id === id ? { ...p, isActive } : p));
+    const handleToggleActive = async (id: string, isActive: boolean) => {
+        const promo = promotions.find(p => p.id === id);
+        if (!promo) return;
+        try {
+            await api.updatePromotion({ ...promo, isActive });
+            setPromotions(prev => prev.map(p => p.id === id ? { ...p, isActive } : p));
+        } catch (error) {
+            console.error("Failed to toggle promotion status:", error);
+            alert("Erro ao alterar o status da promoção.");
+        }
     };
 
     const getPromoValue = (promo: CompanyPromotion) => {
@@ -151,6 +197,14 @@ const PromotionsScreen: React.FC = () => {
         if (promo.type === 'bogo') return `Leve ${promo.value + 1}`;
         return '-';
     };
+
+    if (isLoading) {
+      return (
+        <div className="flex h-full items-center justify-center">
+            <div className="w-16 h-16 border-4 border-t-transparent border-gray-800 rounded-full animate-spin"></div>
+        </div>
+      );
+    }
 
     return (
         <div className="p-4 sm:p-6 lg:p-8 space-y-8 bg-gray-50 h-full overflow-y-auto">
@@ -161,6 +215,8 @@ const PromotionsScreen: React.FC = () => {
                 onClose={() => setIsModalOpen(false)}
                 onSave={handleSavePromotion}
                 promotionToEdit={editingPromotion}
+                products={products}
+                categories={categories}
             />
 
             <header className="flex justify-between items-start">
@@ -202,18 +258,18 @@ const PromotionsScreen: React.FC = () => {
                                         <ToggleSwitch checked={promo.isActive} onChange={(val) => handleToggleActive(promo.id, val)} />
                                     </td>
                                     <td className="p-3 text-right">
-                                        <button onClick={(e) => { e.stopPropagation(); handleOpenModal(promo); }} className="p-2 text-gray-500 hover:text-gray-800"><PencilIcon className="w-5 h-5"/></button>
-                                        <button onClick={(e) => { e.stopPropagation(); handleDeletePromotion(promo.id); }} className="p-2 text-gray-500 hover:text-red-500"><TrashIcon className="w-5 h-5"/></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleOpenModal(promo) }} className="p-2 text-gray-500 hover:text-gray-800"><PencilIcon className="w-5 h-5"/></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeletePromotion(promo.id) }} className="p-2 text-gray-500 hover:text-red-500"><TrashIcon className="w-5 h-5"/></button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
-                    {promotions.length === 0 && (
+                     {promotions.length === 0 && (
                         <div className="text-center py-12">
                              <TagIcon className="mx-auto h-12 w-12 text-gray-400" />
                             <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhuma promoção criada</h3>
-                            <p className="mt-1 text-sm text-gray-500">Comece criando uma nova promoção para sua loja.</p>
+                            <p className="mt-1 text-sm text-gray-500">Comece a criar promoções para atrair mais clientes.</p>
                         </div>
                     )}
                 </div>

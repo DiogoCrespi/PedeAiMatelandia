@@ -1,18 +1,17 @@
 
 
-
 import React, { useState, useEffect } from 'react';
 import { Product, Category as CategoryType, ProductOptionGroup, ProductOptionChoice } from '../../types';
-import { MOCK_PRODUCTS, MOCK_CATEGORIES } from '../../data';
+import * as api from '../../api';
 import { 
     PlusIcon, TrashIcon, PencilIcon, XMarkIcon, ChevronDownIcon,
     DocumentArrowUpIcon, CameraIcon, SparklesIcon, ArrowUpTrayIcon,
     DocumentPlusIcon,
     DocumentTextIcon
 } from '../../icons';
-// import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
-// const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
 type MenuCategory = CategoryType & { products: Product[] };
 
@@ -87,41 +86,41 @@ const MenuFromFileModal: React.FC<{
             const base64Data = filePreview.url.split(',')[1];
             const prompt = `Analise a imagem, PDF ou arquivo CSV deste cardápio. Extraia todos os itens, incluindo nome, descrição, preço e categoria. Retorne um array JSON válido. Cada objeto no array deve ter as chaves: "name" (string), "description" (string, pode ser vazia), "price" (number), and "category" (string). O preço deve ser um número, sem símbolos de moeda. Agrupe os itens em categorias lógicas.`;
 
-            // const response = await ai.models.generateContent({
-            //     model: 'gemini-2.5-flash',
-            //     contents: [{
-            //       text: prompt
-            //     }, {
-            //       inlineData: {
-            //         mimeType: selectedFile.type,
-            //         data: base64Data,
-            //       },
-            //     }],
-            //      config: {
-            //         responseMimeType: "application/json",
-            //      }
-            // });
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: [{
+                  text: prompt
+                }, {
+                  inlineData: {
+                    mimeType: selectedFile.type,
+                    data: base64Data,
+                  },
+                }],
+                 config: {
+                    responseMimeType: "application/json",
+                 }
+            });
 
-            // let jsonStr = response.text.trim();
-            // const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
-            // const match = jsonStr.match(fenceRegex);
-            // if (match && match[2]) {
-            //   jsonStr = match[2].trim();
-            // }
+            let jsonStr = response.text.trim();
+            const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
+            const match = jsonStr.match(fenceRegex);
+            if (match && match[2]) {
+              jsonStr = match[2].trim();
+            }
 
-            // const parsedData: any[] = JSON.parse(jsonStr);
-            // if (!Array.isArray(parsedData)) throw new Error("A resposta da IA não foi um array.");
+            const parsedData: any[] = JSON.parse(jsonStr);
+            if (!Array.isArray(parsedData)) throw new Error("A resposta da IA não foi um array.");
 
-            // const products: ParsedProduct[] = parsedData.map(item => ({
-            //     name: item.name || '',
-            //     description: item.description || '',
-            //     price: typeof item.price === 'number' ? item.price : 0,
-            //     category: item.category || 'Outros',
-            //     included: true,
-            //     isAvailable: true,
-            //     imageUrl: '',
-            // }));
-            // setParsedProducts(products);
+            const products: ParsedProduct[] = parsedData.map(item => ({
+                name: item.name || '',
+                description: item.description || '',
+                price: typeof item.price === 'number' ? item.price : 0,
+                category: item.category || 'Outros',
+                included: true,
+                isAvailable: true,
+                imageUrl: '',
+            }));
+            setParsedProducts(products);
 
         } catch (e) {
             console.error("Erro ao processar o cardápio:", e);
@@ -166,21 +165,21 @@ const MenuFromFileModal: React.FC<{
                 
                 const prompt = `Imagem para um aplicativo de delivery de comida. Foto de estúdio profissional, realista e apetitosa de ${foodDescription}. Foco no prato principal. Fundo limpo, neutro ou branco para destacar a comida. Sem texto, pessoas ou mãos na imagem.`;
 
-                // const response = await ai.models.generateImages({
-                //     model: 'imagen-3.0-generate-002',
-                //     prompt: prompt,
-                //     config: { numberOfImages: 1, outputMimeType: 'image/jpeg' },
-                // });
+                const response = await ai.models.generateImages({
+                    model: 'imagen-3.0-generate-002',
+                    prompt: prompt,
+                    config: { numberOfImages: 1, outputMimeType: 'image/jpeg' },
+                });
 
-                // const base64ImageBytes = response.generatedImages[0].image.imageBytes;
-                // const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+                const base64ImageBytes = response.generatedImages[0].image.imageBytes;
+                const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
                 
-                // setParsedProducts(prev => {
-                //     if (!prev) return null;
-                //     const newProducts = [...prev];
-                //     newProducts[product.originalIndex].imageUrl = imageUrl;
-                //     return newProducts;
-                // });
+                setParsedProducts(prev => {
+                    if (!prev) return null;
+                    const newProducts = [...prev];
+                    newProducts[product.originalIndex].imageUrl = imageUrl;
+                    return newProducts;
+                });
             } catch (error) {
                 console.error(`Erro ao gerar imagem para ${product.name}:`, error);
             } finally {
@@ -422,16 +421,15 @@ const ImageUploader: React.FC<{
         setPreview(null); // Clear preview while generating
 
         try {
-            // const response = await ai.models.generateImages({
-            //     model: 'imagen-3.0-generate-002',
-            //     prompt: aiPrompt,
-            //     config: { numberOfImages: 1, outputMimeType: 'image/jpeg' },
-            // });
-
-            // const base64ImageBytes = response.generatedImages[0].image.imageBytes;
-            // const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
-            // setPreview(imageUrl);
-            // onImageChange(imageUrl);
+            const response = await ai.models.generateImages({
+                model: 'imagen-3.0-generate-002',
+                prompt: aiPrompt,
+                config: { numberOfImages: 1, outputMimeType: 'image/jpeg' },
+            });
+            const base64ImageBytes = response.generatedImages[0].image.imageBytes;
+            const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+            setPreview(imageUrl);
+            onImageChange(imageUrl);
         } catch (error) {
             console.error("Erro ao gerar imagem:", error);
             alert("Ocorreu um erro ao gerar a imagem. Tente novamente.");
@@ -549,6 +547,7 @@ const ProductModal: React.FC<{
     const [product, setProduct] = useState<Product>(productToEdit || emptyProduct);
     const [aiPrompt, setAiPrompt] = useState('');
     const [isAiPromptManuallyEdited, setIsAiPromptManuallyEdited] = useState(false);
+    const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
     const imageSectionRef = React.useRef<HTMLDivElement>(null);
     
     useEffect(() => {
@@ -624,6 +623,28 @@ const ProductModal: React.FC<{
         setProduct(p => ({ ...p, options: updatedOptions }));
     };
 
+    const handleGenerateDescription = async () => {
+        if (!product.name) {
+            alert("Por favor, preencha o nome do produto primeiro.");
+            return;
+        }
+        setIsGeneratingDesc(true);
+        try {
+            const prompt = `Crie uma descrição de marketing curta e apetitosa para o seguinte item de um cardápio de delivery: Nome: "${product.name}", Categoria: "${product.category}". A descrição não deve repetir o nome do produto e deve ter no máximo 150 caracteres.`;
+            const response = await ai.models.generateContent({
+                model: "gemini-2.5-flash",
+                contents: prompt,
+            });
+            const generatedDesc = response.text.trim().replace(/^"|"$/g, '');
+            setProduct(p => ({ ...p, description: generatedDesc }));
+        } catch (error) {
+            console.error("Error generating product description:", error);
+            alert("Não foi possível gerar a descrição. Tente novamente.");
+        } finally {
+            setIsGeneratingDesc(false);
+        }
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSave(product);
@@ -644,7 +665,18 @@ const ProductModal: React.FC<{
                         <input type="text" name="name" value={product.name} onChange={handleChange} className="w-full input" required />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="block text-sm font-medium text-gray-700">Descrição</label>
+                            <button
+                                type="button"
+                                onClick={handleGenerateDescription}
+                                disabled={isGeneratingDesc}
+                                className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <SparklesIcon className={`w-4 h-4 text-purple-600 ${isGeneratingDesc ? 'animate-pulse' : ''}`} />
+                                <span>{isGeneratingDesc ? 'Gerando...' : 'Gerar com IA'}</span>
+                            </button>
+                        </div>
                         <textarea name="description" value={product.description} onChange={handleChange} rows={3} className="w-full input"></textarea>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -718,7 +750,8 @@ const ProductModal: React.FC<{
 const MenuManagementScreen: React.FC = () => {
   const [menuData, setMenuData] = useState<MenuCategory[]>([]);
   const [activeCategoryIds, setActiveCategoryIds] = useState<string[]>([]);
-  
+  const [isLoading, setIsLoading] = useState(true);
+
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [scrollToImageOnOpen, setScrollToImageOnOpen] = useState(false);
@@ -730,39 +763,71 @@ const MenuManagementScreen: React.FC = () => {
 
 
   useEffect(() => {
-    // Combine mock data into a usable structure
-    const categories: Omit<CategoryType, 'imageUrl'>[] = MOCK_CATEGORIES.map(({id, name}) => ({id, name}));
-    const products: Product[] = MOCK_PRODUCTS.map(p => ({...p, isAvailable: p.isAvailable ?? true}));
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const [categories, products] = await Promise.all([
+                api.getCategories(),
+                api.getProducts()
+            ]);
 
-    const categoriesWithProducts: MenuCategory[] = categories.map(cat => ({
-      ...cat,
-      imageUrl: '', // Ensure imageUrl is here for the type, but it's not used for display
-      products: products.filter(p => p.category === cat.name)
-    }));
-    
-    const uncategorizedProducts = products.filter(p => !p.category || !categories.some(c => c.name === p.category));
-    if (uncategorizedProducts.length > 0) {
-        categoriesWithProducts.push({
-            id: 'cat-uncategorized', name: 'Outros', imageUrl: '',
-            products: uncategorizedProducts
-        });
-    }
+            const productsWithDefaults = products.map(p => ({...p, isAvailable: p.isAvailable ?? true}));
 
-    setMenuData(categoriesWithProducts);
-    setActiveCategoryIds(categoriesWithProducts.map(c => c.id));
+            const categoriesWithProducts: MenuCategory[] = categories.map(cat => ({
+                ...cat,
+                products: productsWithDefaults.filter(p => p.category === cat.name)
+            }));
+            
+            const uncategorizedProducts = productsWithDefaults.filter(p => !p.category || !categories.some(c => c.name === p.category));
+            if (uncategorizedProducts.length > 0) {
+                categoriesWithProducts.push({
+                    id: 'cat-uncategorized', name: 'Outros', imageUrl: '',
+                    products: uncategorizedProducts
+                });
+            }
+
+            setMenuData(categoriesWithProducts);
+            setActiveCategoryIds(categoriesWithProducts.map(c => c.id));
+        } catch (error) {
+            console.error("Failed to fetch menu data:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    fetchData();
   }, []);
 
   const handleToggleCategory = (categoryId: string) => {
     setActiveCategoryIds(prev => prev.includes(categoryId) ? prev.filter(id => id !== categoryId) : [...prev, categoryId]);
   };
   
-  const handleToggleAvailability = (productId: string, categoryId: string) => {
+  const handleToggleAvailability = async (productId: string, categoryId: string) => {
+      let productToUpdate: Product | undefined;
+      const originalMenuData = [...menuData];
+
       setMenuData(prevData => prevData.map(cat => {
           if (cat.id === categoryId) {
-              return { ...cat, products: cat.products.map(p => p.id === productId ? { ...p, isAvailable: !p.isAvailable } : p) };
+              const products = cat.products.map(p => {
+                  if (p.id === productId) {
+                      productToUpdate = { ...p, isAvailable: !p.isAvailable };
+                      return productToUpdate;
+                  }
+                  return p;
+              });
+              return { ...cat, products };
           }
           return cat;
       }));
+      
+      if (productToUpdate) {
+          try {
+              await api.updateProduct(productToUpdate);
+          } catch (error) {
+              console.error("Failed to update product availability:", error);
+              alert("Erro ao atualizar disponibilidade do produto.");
+              setMenuData(originalMenuData);
+          }
+      }
   };
   
   const handleOpenCategoryModal = (category: CategoryType | null) => {
@@ -770,19 +835,50 @@ const MenuManagementScreen: React.FC = () => {
       setIsCategoryModalOpen(true);
   };
 
-  const handleSaveCategory = (category: CategoryType) => {
+  const handleSaveCategory = async (category: CategoryType) => {
       const isEditing = menuData.some(c => c.id === category.id);
-      if (isEditing) {
-          setMenuData(prev => prev.map(c => c.id === category.id ? {...c, name: category.name } : c));
-      } else {
-          setMenuData(prev => [...prev, { ...category, products: [] }]);
+      try {
+          if (isEditing) {
+              const updatedCategory = await api.updateCategory(category);
+              setMenuData(prev => prev.map(c => c.id === updatedCategory.id ? {...c, ...updatedCategory } : c));
+          } else {
+              const newCategory = await api.addCategory(category);
+              setMenuData(prev => [...prev, { ...newCategory, products: [] }]);
+          }
+      } catch (error) {
+          console.error("Failed to save category:", error);
+          alert("Erro ao salvar categoria.");
+      } finally {
+        setIsCategoryModalOpen(false);
       }
-      setIsCategoryModalOpen(false);
   };
 
-  const handleDeleteCategory = (categoryId: string) => {
-      if (window.confirm("Tem certeza que deseja excluir esta categoria e todos os seus produtos?")) {
-          setMenuData(prev => prev.filter(c => c.id !== categoryId));
+  const handleDeleteCategory = async (categoryId: string) => {
+      if (window.confirm("Tem certeza que deseja excluir esta categoria? Os produtos associados serão movidos para 'Outros'.")) {
+          try {
+            await api.deleteCategory(categoryId);
+            const categoryToDelete = menuData.find(c => c.id === categoryId);
+            if (!categoryToDelete) return;
+
+            const productsToMove = categoryToDelete.products;
+
+            setMenuData(prev => {
+                let newData = prev.filter(c => c.id !== categoryId);
+                let othersCategory = newData.find(c => c.id === 'cat-uncategorized');
+                if (othersCategory) {
+                    othersCategory.products.push(...productsToMove);
+                } else {
+                     newData.push({
+                        id: 'cat-uncategorized', name: 'Outros', imageUrl: '',
+                        products: productsToMove
+                    });
+                }
+                return newData;
+            });
+          } catch(error) {
+              console.error("Failed to delete category:", error);
+              alert("Erro ao excluir categoria.");
+          }
       }
   };
 
@@ -797,67 +893,77 @@ const MenuManagementScreen: React.FC = () => {
       setIsProductModalOpen(true);
   };
 
-  const handleSaveProduct = (product: Product) => {
+  const handleSaveProduct = async (product: Product) => {
     const isNew = !menuData.flatMap(c => c.products).some(p => p.id === product.id);
     
-    setMenuData(prevData => {
-        let newData = [...prevData];
-        // Remove product from its old category if it exists
-        newData = newData.map(cat => ({
-            ...cat,
-            products: cat.products.filter(p => p.id !== product.id)
-        }));
+    try {
+        const savedProduct = isNew ? await api.addProduct(product) : await api.updateProduct(product);
+        
+        setMenuData(prevData => {
+            let newData = [...prevData];
+            // Remove product from its old category if it exists
+            newData = newData.map(cat => ({
+                ...cat,
+                products: cat.products.filter(p => p.id !== savedProduct.id)
+            }));
 
-        // Add product to its new category
-        const targetCategoryIndex = newData.findIndex(c => c.name === product.category);
-        if (targetCategoryIndex !== -1) {
-            const finalProduct = isNew ? { ...product, id: `prod-${Date.now()}` } : product;
-            newData[targetCategoryIndex].products.push(finalProduct);
-            newData[targetCategoryIndex].products.sort((a, b) => a.name.localeCompare(b.name));
-        }
-        return newData;
-    });
-
-    setIsProductModalOpen(false);
-    setEditingProduct(null);
+            // Add product to its new category
+            let targetCategory = newData.find(c => c.name === savedProduct.category);
+            if (!targetCategory) {
+                // If category doesn't exist, create it (should not happen with dropdown but good for robustness)
+                targetCategory = { id: `cat-${Date.now()}`, name: savedProduct.category || 'Outros', imageUrl: '', products: [] };
+                newData.push(targetCategory);
+            }
+            targetCategory.products.push(savedProduct);
+            targetCategory.products.sort((a, b) => a.name.localeCompare(b.name));
+            
+            return newData.filter(c => c.products.length > 0 || c.id !== 'cat-uncategorized'); // Clean up empty 'Outros'
+        });
+    } catch (error) {
+        console.error("Failed to save product:", error);
+        alert("Erro ao salvar produto.");
+    } finally {
+        setIsProductModalOpen(false);
+        setEditingProduct(null);
+    }
   };
 
-  const handleDeleteProduct = (productId: string, categoryId: string) => {
+  const handleDeleteProduct = async (productId: string, categoryId: string) => {
       if (window.confirm("Tem certeza que deseja excluir este produto?")) {
-          setMenuData(prev => prev.map(cat => {
-              if (cat.id === categoryId) {
-                  return {...cat, products: cat.products.filter(p => p.id !== productId)};
-              }
-              return cat;
-          }));
+          try {
+              await api.deleteProduct(productId);
+              setMenuData(prev => prev.map(cat => {
+                  if (cat.id === categoryId) {
+                      return {...cat, products: cat.products.filter(p => p.id !== productId)};
+                  }
+                  return cat;
+              }));
+          } catch (error) {
+              console.error("Failed to delete product:", error);
+              alert("Erro ao excluir produto.");
+          }
       }
   };
   
-  const handleImportProducts = (importedProducts: Product[]) => {
-    setMenuData(currentMenuData => {
-        const newMenuData = JSON.parse(JSON.stringify(currentMenuData)); // Deep copy
-        const categoryMap = new Map<string, MenuCategory>(newMenuData.map((cat: MenuCategory) => [cat.name, cat]));
-
-        importedProducts.forEach(product => {
-            const categoryName = product.category || 'Outros';
-            const newProduct = { ...product, restaurantId: 'rest1', id: `prod-${Date.now()}-${Math.random()}`};
-
-            if (categoryMap.has(categoryName)) {
-                categoryMap.get(categoryName)!.products.push(newProduct);
-            } else {
-                const newCategory: MenuCategory = {
-                    id: `cat-${Date.now()}-${Math.random()}`,
-                    name: categoryName,
-                    imageUrl: '',
-                    products: [newProduct]
-                };
-                categoryMap.set(categoryName, newCategory);
-            }
-        });
-        
-        return Array.from(categoryMap.values());
-    });
-    alert(`${importedProducts.length} produtos importados com sucesso!`);
+  const handleImportProducts = async (importedProducts: Product[]) => {
+    try {
+        const newProducts = await api.importProducts(importedProducts);
+        // Refetch all data to correctly display new categories and products
+        const [categories, products] = await Promise.all([api.getCategories(), api.getProducts()]);
+        const categoriesWithProducts: MenuCategory[] = categories.map(cat => ({
+            ...cat,
+            products: products.filter(p => p.category === cat.name)
+        }));
+        const uncategorizedProducts = products.filter(p => !p.category || !categories.some(c => c.name === p.category));
+        if (uncategorizedProducts.length > 0) {
+            categoriesWithProducts.push({ id: 'cat-uncategorized', name: 'Outros', imageUrl: '', products: uncategorizedProducts });
+        }
+        setMenuData(categoriesWithProducts);
+        alert(`${newProducts.length} produtos importados com sucesso!`);
+    } catch (error) {
+        console.error("Failed to import products:", error);
+        alert("Erro ao importar produtos.");
+    }
   };
 
   const OnboardingCard: React.FC<{icon: React.ElementType, title: string, description: string, onClick?: () => void}> = ({ icon: Icon, title, description, onClick }) => (
@@ -869,6 +975,14 @@ const MenuManagementScreen: React.FC = () => {
   );
 
   const allCategories = menuData.map(({ id, name }) => ({ id, name }));
+
+  if(isLoading) {
+    return (
+        <div className="flex h-full items-center justify-center">
+            <div className="w-16 h-16 border-4 border-t-transparent border-gray-800 rounded-full animate-spin"></div>
+        </div>
+    );
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-8 bg-gray-50 h-full overflow-y-auto">

@@ -1,10 +1,11 @@
 
 
 
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Restaurant, Product, DeliveryType } from '../types';
-import { MOCK_RESTAURANTS, MOCK_PRODUCTS } from '../data';
+import * as api from '../api';
 import { StarIcon, ChevronLeftIcon, SearchIcon } from '../icons';
 import ProductCard from '../components/ProductCard';
 import DeliveryTypeSelector from '../components/DeliveryTypeSelector';
@@ -21,15 +22,34 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ deliveryType, onDeliveryTypeC
   const [menu, setMenu] = useState<Product[]>([]);
   const [activeTab, setActiveTab] = useState<'cardapio' | 'informacoes'>('cardapio');
   const [menuSearchTerm, setMenuSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (storeId) {
-      const foundRestaurant = MOCK_RESTAURANTS.find(r => r.id === storeId);
-      setRestaurant(foundRestaurant || null);
-      if (foundRestaurant) {
-        setMenu(MOCK_PRODUCTS.filter(p => p.restaurantId === storeId));
-      }
-    }
+    const fetchStoreData = async () => {
+        if (storeId) {
+            setIsLoading(true);
+            try {
+                const [restaurantData, menuData] = await Promise.all([
+                    api.getRestaurantById(storeId),
+                    api.getProductsByRestaurant(storeId)
+                ]);
+
+                if (restaurantData) {
+                    setRestaurant(restaurantData);
+                    setMenu(menuData);
+                } else {
+                    // Handle restaurant not found
+                    setRestaurant(null);
+                    setMenu([]);
+                }
+            } catch (error) {
+                console.error("Failed to fetch store data:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+    };
+    fetchStoreData();
   }, [storeId]);
 
   const menuByCategories: { [category: string]: Product[] } = menu.reduce((acc, product) => {
@@ -62,6 +82,14 @@ const StoreScreen: React.FC<StoreScreenProps> = ({ deliveryType, onDeliveryTypeC
 
   const totalFilteredProducts = Object.values(filteredMenuByCategories).flat().length;
 
+
+  if (isLoading) {
+    return (
+        <div className="flex items-center justify-center h-screen">
+            <div className="w-16 h-16 border-4 border-t-transparent border-appTextSecondary rounded-full animate-spin"></div>
+        </div>
+    );
+  }
 
   if (!restaurant) {
     return <div className="p-4 text-center text-appTextSecondary">Restaurante não encontrado.</div>;

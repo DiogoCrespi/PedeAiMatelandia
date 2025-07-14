@@ -1,9 +1,10 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { Restaurant, Product, Category } from '../types';
 import { ROUTE_PATHS } from '../constants';
-import { MOCK_RESTAURANTS, MOCK_PRODUCTS, MOCK_CATEGORIES } from '../data';
+import * as api from '../api';
 import { SearchIcon, XMarkIcon, StarIcon } from '../icons';
 import RestaurantCard from '../components/RestaurantCard';
 import ProductCard from '../components/ProductCard'; 
@@ -16,28 +17,28 @@ interface SearchScreenProps {
 const SearchScreen: React.FC<SearchScreenProps> = ({ favoriteRestaurants, onToggleFavorite }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<{ restaurants: Restaurant[], products: Product[] }>({ restaurants: [], products: [] });
-  const [recentSearches, setRecentSearches] = useState<string[]>(['Pizza', 'Hambúrguer', 'Sushi', 'Salada']); 
+  const [recentSearches, setRecentSearches] = useState<string[]>([]); 
   const [popularCategories, setPopularCategories] = useState<Category[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
 
-  const performSearch = useCallback((term: string) => {
+  const performSearch = useCallback(async (term: string) => {
     if (!term.trim()) {
       setSearchResults({ restaurants: [], products: [] });
       return;
     }
-    const lowerTerm = term.toLowerCase();
-    const filteredRestaurants = MOCK_RESTAURANTS.filter(r => 
-      r.name.toLowerCase().includes(lowerTerm) || 
-      r.cuisine.toLowerCase().includes(lowerTerm)
-    );
-    const filteredProducts = MOCK_PRODUCTS.filter(p => 
-      p.name.toLowerCase().includes(lowerTerm) ||
-      p.description.toLowerCase().includes(lowerTerm) ||
-      (p.category && p.category.toLowerCase().includes(lowerTerm))
-    );
-    setSearchResults({ restaurants: filteredRestaurants, products: filteredProducts });
+    setIsSearching(true);
+    try {
+        const results = await api.searchData(term);
+        setSearchResults(results);
+    } catch (error) {
+        console.error("Search failed:", error);
+        setSearchResults({ restaurants: [], products: [] });
+    } finally {
+        setIsSearching(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -53,9 +54,23 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ favoriteRestaurants, onTogg
     }
     
     setSearchTerm(initialSearch);
-    performSearch(initialSearch); 
-    
-    setPopularCategories(MOCK_CATEGORIES.slice(0, 6));
+    if(initialSearch) {
+      performSearch(initialSearch);
+    }
+
+    const fetchInitialData = async () => {
+        try {
+            const [allCategories, recentData] = await Promise.all([
+                api.getCategories(),
+                api.getRecentSearches()
+            ]);
+            setPopularCategories(allCategories.slice(0, 6));
+            setRecentSearches(recentData);
+        } catch (error) {
+            console.error("Failed to fetch initial search data:", error);
+        }
+    };
+    fetchInitialData();
   }, [location.search, performSearch]); 
 
   const addTermToRecent = (term: string) => {
@@ -157,43 +172,47 @@ const SearchScreen: React.FC<SearchScreenProps> = ({ favoriteRestaurants, onTogg
         </section>
       )}
 
-      {searchTerm !== '' && (searchResults.restaurants.length > 0 || searchResults.products.length > 0) && (
-        <section>
-          <h2 className="text-appTextPrimary text-xl font-bold leading-tight tracking-[-0.015em] px-0 pb-3 pt-2">Resultados para "{searchTerm}"</h2>
-          {searchResults.restaurants.length > 0 && (
-            <>
-              <h3 className="text-appTextPrimary text-lg font-semibold mb-2">Lojas</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                {searchResults.restaurants.map(restaurant => (
-                  <RestaurantCard 
-                    key={restaurant.id} 
-                    restaurant={restaurant} 
-                    isFavorited={favoriteRestaurants.includes(restaurant.id)}
-                    onToggleFavorite={onToggleFavorite}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-          {searchResults.products.length > 0 && (
-            <>
-              <h3 className="text-appTextPrimary text-lg font-semibold mb-2">Pratos</h3>
-              <div className="space-y-3">
-                {searchResults.products.map(product => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-            </>
-          )}
-        </section>
-      )}
-      {searchTerm !== '' && searchResults.restaurants.length === 0 && searchResults.products.length === 0 && (
-        <div className="text-center py-10">
-            <SearchIcon className="w-16 h-16 text-appTextSecondary/50 mx-auto mb-4"/>
-            <p className="text-appTextSecondary text-lg">Nenhum resultado encontrado para "{searchTerm}".</p>
-            <p className="text-appTextSecondary/80">Tente buscar por outros termos.</p>
-        </div>
-      )}
+        {isSearching ? (
+             <div className="text-center py-10">
+                <div className="w-12 h-12 border-4 border-t-transparent border-appTextSecondary rounded-full animate-spin mx-auto"></div>
+                <p className="text-appTextSecondary mt-4">Buscando...</p>
+             </div>
+        ) : searchTerm !== '' && (searchResults.restaurants.length > 0 || searchResults.products.length > 0) ? (
+            <section>
+              <h2 className="text-appTextPrimary text-xl font-bold leading-tight tracking-[-0.015em] px-0 pb-3 pt-2">Resultados para "{searchTerm}"</h2>
+              {searchResults.restaurants.length > 0 && (
+                <>
+                  <h3 className="text-appTextPrimary text-lg font-semibold mb-2">Lojas</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    {searchResults.restaurants.map(restaurant => (
+                      <RestaurantCard 
+                        key={restaurant.id} 
+                        restaurant={restaurant} 
+                        isFavorited={favoriteRestaurants.includes(restaurant.id)}
+                        onToggleFavorite={onToggleFavorite}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+              {searchResults.products.length > 0 && (
+                <>
+                  <h3 className="text-appTextPrimary text-lg font-semibold mb-2">Pratos</h3>
+                  <div className="space-y-3">
+                    {searchResults.products.map(product => (
+                      <ProductCard key={product.id} product={product} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
+        ) : searchTerm !== '' && searchResults.restaurants.length === 0 && searchResults.products.length === 0 && (
+            <div className="text-center py-10">
+                <SearchIcon className="w-16 h-16 text-appTextSecondary/50 mx-auto mb-4"/>
+                <p className="text-appTextSecondary text-lg">Nenhum resultado encontrado para "{searchTerm}".</p>
+                <p className="text-appTextSecondary/80">Tente buscar por outros termos.</p>
+            </div>
+        )}
     </div>
   );
 };

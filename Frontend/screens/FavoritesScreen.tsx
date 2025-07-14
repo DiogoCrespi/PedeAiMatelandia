@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ROUTE_PATHS } from '../constants';
-import { MOCK_RESTAURANTS } from '../data';
+import * as api from '../api';
+import { Restaurant } from '../types';
 import RestaurantCard from '../components/RestaurantCard';
 import { ChevronLeftIcon, HeartIcon } from '../icons';
 
@@ -12,8 +13,25 @@ interface FavoritesScreenProps {
 
 const FavoritesScreen: React.FC<FavoritesScreenProps> = ({ favoriteRestaurants, onToggleFavorite }) => {
   const navigate = useNavigate();
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRestaurants = async () => {
+      setIsLoading(true);
+      try {
+        const data = await api.getRestaurants();
+        setRestaurants(data);
+      } catch (error) {
+        console.error("Failed to fetch restaurants:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchRestaurants();
+  }, []);
   
-  const favoriteRestaurantDetails = MOCK_RESTAURANTS.filter(restaurant => 
+  const favoriteRestaurantDetails = restaurants.filter(restaurant => 
     favoriteRestaurants.includes(restaurant.id)
   );
 
@@ -27,7 +45,11 @@ const FavoritesScreen: React.FC<FavoritesScreenProps> = ({ favoriteRestaurants, 
         <h1 className="text-xl font-bold text-appTextPrimary">Meus Favoritos</h1>
       </div>
 
-      {favoriteRestaurantDetails.length > 0 ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center flex-1">
+          <div className="w-12 h-12 border-4 border-t-transparent border-appTextSecondary rounded-full animate-spin"></div>
+        </div>
+      ) : favoriteRestaurantDetails.length > 0 ? (
         <div className="p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {favoriteRestaurantDetails.map(restaurant => (

@@ -1,9 +1,10 @@
 
+
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { User } from '../types';
 import { ROUTE_PATHS } from '../constants';
-import { MOCK_USER } from '../data';
+import * as api from '../api';
 import { LogoIcon, GoogleIcon, FacebookIcon, EyeIcon, EyeSlashIcon } from '../icons';
 
 interface SignupScreenProps {
@@ -17,30 +18,49 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [isSigningUp, setIsSigningUp] = useState(false);
   
   const location = useLocation();
   const navigate = useNavigate();
   const fromPath = location.state?.from?.pathname;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      alert('As senhas não coincidem.');
+      setError('As senhas não coincidem.');
       return;
     }
-    if (name && email && password) {
-      // Create a new mock user, or use the existing one but update the name/email
-      const newUser: User = { ...MOCK_USER, id: `user-${Date.now()}`, name, email };
-      onSignup(newUser, fromPath);
-    } else {
-      alert('Por favor, preencha todos os campos.');
+    if (!name || !email || !password) {
+      setError('Por favor, preencha todos os campos.');
+      return;
+    }
+    
+    setError('');
+    setIsSigningUp(true);
+    try {
+        const newUser = await api.signup(name, email, password);
+        onSignup(newUser, fromPath);
+    } catch (err) {
+        setError('Ocorreu um erro ao criar a conta. Tente novamente.');
+    } finally {
+        setIsSigningUp(false);
     }
   };
   
-  const handleSocialLogin = () => {
-    // In a real app, this would trigger the social auth flow.
-    // For this mock, we just log in with the default user.
-    onSignup(MOCK_USER, fromPath);
+  const handleSocialLogin = async () => {
+    setIsSigningUp(true);
+    setError('');
+    try {
+        const user = await api.login('social@example.com', 'password'); // Mock social login
+        if (user) {
+            onSignup(user, fromPath);
+        }
+    } catch (err) {
+        setError('Ocorreu um erro com o login social.');
+    } finally {
+        setIsSigningUp(false);
+    }
   }
 
   return (
@@ -63,6 +83,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup }) => {
               placeholder="Seu nome completo"
               className="w-full px-4 py-3 border border-appBorderLight rounded-lg focus:ring-appTextPrimary focus:border-appTextPrimary transition-shadow bg-white text-appTextPrimary placeholder-appTextSecondary"
               required
+              disabled={isSigningUp}
             />
           </div>
           <div>
@@ -75,6 +96,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup }) => {
               placeholder="seuemail@exemplo.com"
               className="w-full px-4 py-3 border border-appBorderLight rounded-lg focus:ring-appTextPrimary focus:border-appTextPrimary transition-shadow bg-white text-appTextPrimary placeholder-appTextSecondary"
               required
+              disabled={isSigningUp}
             />
           </div>
           <div className="relative">
@@ -87,6 +109,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup }) => {
               placeholder="Crie uma senha forte"
               className="w-full px-4 py-3 border border-appBorderLight rounded-lg focus:ring-appTextPrimary focus:border-appTextPrimary transition-shadow bg-white text-appTextPrimary placeholder-appTextSecondary"
               required
+              disabled={isSigningUp}
             />
             <button
                 type="button"
@@ -107,6 +130,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup }) => {
               placeholder="Confirme sua senha"
               className="w-full px-4 py-3 border border-appBorderLight rounded-lg focus:ring-appTextPrimary focus:border-appTextPrimary transition-shadow bg-white text-appTextPrimary placeholder-appTextSecondary"
               required
+              disabled={isSigningUp}
             />
              <button
                 type="button"
@@ -117,11 +141,13 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup }) => {
                 {showConfirmPassword ? <EyeSlashIcon className="w-5 h-5"/> : <EyeIcon className="w-5 h-5"/>}
             </button>
           </div>
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"
-            className="w-full bg-appPrimaryActionBg text-appPrimaryActionText py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-appTextPrimary focus:ring-opacity-50 mt-2"
+            className="w-full bg-appPrimaryActionBg text-appPrimaryActionText py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-appTextPrimary focus:ring-opacity-50 mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
+            disabled={isSigningUp}
           >
-            Criar Conta
+            {isSigningUp ? 'Criando conta...' : 'Criar Conta'}
           </button>
         </form>
         
@@ -141,10 +167,10 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ onSignup }) => {
         </div>
 
         <div className="space-y-3">
-            <button onClick={handleSocialLogin} className="w-full flex items-center justify-center py-3 border border-appBorderLight rounded-lg hover:bg-appHeaderButtonBg text-appTextPrimary transition-colors">
+            <button onClick={handleSocialLogin} disabled={isSigningUp} className="w-full flex items-center justify-center py-3 border border-appBorderLight rounded-lg hover:bg-appHeaderButtonBg text-appTextPrimary transition-colors disabled:opacity-70 disabled:cursor-not-allowed">
                 <GoogleIcon className="w-5 h-5 mr-3" /> Criar com Google
             </button>
-            <button onClick={handleSocialLogin} className="w-full flex items-center justify-center py-3 border border-appBorderLight rounded-lg hover:bg-appHeaderButtonBg text-appTextPrimary transition-colors">
+            <button onClick={handleSocialLogin} disabled={isSigningUp} className="w-full flex items-center justify-center py-3 border border-appBorderLight rounded-lg hover:bg-appHeaderButtonBg text-appTextPrimary transition-colors disabled:opacity-70 disabled:cursor-not-allowed">
                 <FacebookIcon className="w-6 h-6 mr-2" /> Criar com Facebook
             </button>
         </div>

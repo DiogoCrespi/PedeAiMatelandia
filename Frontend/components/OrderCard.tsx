@@ -1,17 +1,18 @@
+
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Order, OrderStatus } from '../types';
 import { ROUTE_PATHS } from '../constants';
-import { MOCK_RESTAURANTS } from '../data';
 import { ChevronRightIcon } from '../icons';
 
 interface OrderCardProps {
   order: Order;
+  restaurantImageUrl?: string;
 }
 
-const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
-  const restaurant = MOCK_RESTAURANTS.find(r => r.id === order.restaurantId);
-  const restaurantImage = restaurant?.imageUrl || 'https://picsum.photos/seed/placeholder/200/200';
+const OrderCard: React.FC<OrderCardProps> = ({ order, restaurantImageUrl }) => {
+  const imageToShow = restaurantImageUrl || 'https://picsum.photos/seed/placeholder/200/200';
 
   const getStatusClasses = (status: OrderStatus) => {
     switch (status) {
@@ -32,7 +33,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
       className="bg-white p-3 rounded-lg shadow-sm flex items-center space-x-4 border border-appBorderLight hover:shadow-md hover:border-appCategoryActiveBorder transition-all group"
     >
       <img 
-        src={restaurantImage} 
+        src={imageToShow} 
         alt={order.restaurantName} 
         className="w-16 h-16 object-cover rounded-md flex-shrink-0"
       />

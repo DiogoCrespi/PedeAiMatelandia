@@ -1,6 +1,6 @@
 
-import React, { useState, useMemo } from 'react';
-import { MOCK_ORDERS, MOCK_PRODUCTS } from '../../data';
+import React, { useState, useMemo, useEffect } from 'react';
+import * as api from '../../api';
 import { Order, OrderStatus, Product } from '../../types';
 import { ChartBarIcon, DocumentArrowDownIcon } from '../../icons';
 
@@ -92,7 +92,28 @@ const ChannelSales: React.FC<{ data: { app: number, local: number } }> = ({ data
 
 const ReportsScreen: React.FC = () => {
     const [period, setPeriod] = useState<Period>('7d');
-    const allOrders = MOCK_ORDERS;
+    const [allOrders, setAllOrders] = useState<Order[]>([]);
+    const [allProducts, setAllProducts] = useState<Product[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setIsLoading(true);
+            try {
+                const [ordersData, productsData] = await Promise.all([
+                    api.getOrders(),
+                    api.getProducts()
+                ]);
+                setAllOrders(ordersData);
+                setAllProducts(productsData);
+            } catch (error) {
+                console.error("Failed to fetch reports data:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
 
     const filteredOrders = useMemo(() => {
         const now = new Date();
@@ -138,9 +159,10 @@ const ReportsScreen: React.FC = () => {
         
         const topProducts = Object.entries(productSales)
             .map(([productId, quantity]) => ({
-                ...(MOCK_PRODUCTS.find(p => p.id === productId) as Product),
+                ...(allProducts.find(p => p.id === productId) as Product),
                 quantity,
             }))
+            .filter(p => p.id) // Filter out any products that weren't found
             .sort((a, b) => b.quantity - a.quantity);
         
         const channelSales = filteredOrders.reduce((acc, order) => {
@@ -150,7 +172,7 @@ const ReportsScreen: React.FC = () => {
         }, { app: 0, local: 0 });
 
         return { totalSales, totalOrders, averageTicket, newCustomers, chartData, topProducts, channelSales };
-    }, [filteredOrders]);
+    }, [filteredOrders, allProducts]);
 
     const handleExport = () => {
         alert("Gerando exportação de relatório... (simulação)");
@@ -162,6 +184,13 @@ const ReportsScreen: React.FC = () => {
         { key: '30d', label: '30 Dias' },
     ] as const;
 
+    if (isLoading) {
+      return (
+        <div className="flex h-full items-center justify-center">
+            <div className="w-16 h-16 border-4 border-t-transparent border-gray-800 rounded-full animate-spin"></div>
+        </div>
+      );
+    }
 
     return (
         <div className="p-4 sm:p-6 lg:p-8 space-y-6 bg-gray-50 h-full overflow-y-auto">

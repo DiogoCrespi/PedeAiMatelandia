@@ -2,18 +2,23 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ROUTE_PATHS } from '../constants';
 import { LogoIcon as HeaderLogoIcon, CheckCircleIcon } from '../icons';
+import * as api from '../api';
 
 const PasswordRecoveryScreen: React.FC = () => {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you would call your API here.
-    // For this example, we'll just move to the submitted state.
     if (email) {
-      setSubmitted(true);
+      try {
+        await api.passwordRecovery(email);
+        setSubmitted(true);
+      } catch (err) {
+        console.error("Password recovery failed", err);
+        alert("Ocorreu um erro. Tente novamente.");
+      }
     }
   };
 

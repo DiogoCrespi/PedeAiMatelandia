@@ -1,7 +1,10 @@
-import React from 'react';
+
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Order, OrderStatus } from '../types';
+import { Order, OrderStatus, Restaurant } from '../types';
 import { ROUTE_PATHS } from '../constants';
+import * as api from '../api';
 import { ChevronLeftIcon, CartIcon as FooterCartIcon } from '../icons';
 import OrderCard from '../components/OrderCard';
 
@@ -11,6 +14,16 @@ interface OrderHistoryScreenProps {
 
 const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ orders }) => {
   const navigate = useNavigate();
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+
+  useEffect(() => {
+    api.getRestaurants().then(setRestaurants);
+  }, []);
+
+  const restaurantImageMap = restaurants.reduce((map, rest) => {
+    map[rest.id] = rest.imageUrl;
+    return map;
+  }, {} as Record<string, string>);
 
   const ongoingOrders = orders
     .filter(o => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.CANCELLED)
@@ -50,7 +63,9 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ orders }) => {
                 Pedidos em Andamento
               </h2>
               <div className="space-y-3">
-                {ongoingOrders.map(order => <OrderCard key={order.id} order={order} />)}
+                {ongoingOrders.map(order => (
+                    <OrderCard key={order.id} order={order} restaurantImageUrl={restaurantImageMap[order.restaurantId]} />
+                ))}
               </div>
             </section>
           )}
@@ -61,7 +76,9 @@ const OrderHistoryScreen: React.FC<OrderHistoryScreenProps> = ({ orders }) => {
                 Pedidos Anteriores
               </h2>
               <div className="space-y-3">
-                {pastOrders.map(order => <OrderCard key={order.id} order={order} />)}
+                {pastOrders.map(order => (
+                    <OrderCard key={order.id} order={order} restaurantImageUrl={restaurantImageMap[order.restaurantId]} />
+                ))}
               </div>
             </section>
           )}

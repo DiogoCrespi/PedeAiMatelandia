@@ -1,41 +1,60 @@
 
+
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CartItem, Address, Order, OrderStatus, PaymentMethod, DeliveryType } from '../types';
+import { CartItem, Address, Order, OrderStatus, PaymentMethod, DeliveryType, Restaurant, User, Coupon } from '../types';
 import { ROUTE_PATHS } from '../constants';
-import { MOCK_USER, MOCK_RESTAURANTS } from '../data';
+import * as api from '../api';
 import { MapPinIcon, CreditCardIcon, VisaIcon, MastercardIcon, PixIcon, PickupBuildingIcon } from '../icons'; 
+import CouponInputForm from '../components/CouponInputForm';
 
 interface CheckoutScreenProps {
   cartItems: CartItem[];
   deliveryAddress: Address;
   paymentMethods: PaymentMethod[];
-  onPlaceOrder: (order: Order) => void;
+  onPlaceOrder: (paymentMethodDescription: string) => void;
   deliveryType: DeliveryType;
+  user: User;
+  appliedCoupon: Coupon | null;
+  couponError: string;
+  onApplyCoupon: (code: string) => void;
+  onRemoveCoupon: () => void;
+  isCouponLoading: boolean;
 }
 
-const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ cartItems, deliveryAddress, paymentMethods, onPlaceOrder, deliveryType }) => {
+const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ cartItems, deliveryAddress, paymentMethods, onPlaceOrder, deliveryType, user, appliedCoupon, couponError, onApplyCoupon, onRemoveCoupon, isCouponLoading }) => {
   const navigate = useNavigate();
   
   const defaultPayment = paymentMethods.find(pm => pm.isDefault);
   const [selectedPaymentId, setSelectedPaymentId] = useState<string>(defaultPayment ? `card-${defaultPayment.id}` : 'pix');
-  
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+
   const restaurantId = cartItems[0]?.product.restaurantId;
-  const restaurant = MOCK_RESTAURANTS.find(r => r.id === restaurantId); 
-  const restaurantName = restaurant?.name || 'Restaurante Desconhecido';
+
+  useEffect(() => {
+    if (restaurantId) {
+      api.getRestaurantById(restaurantId).then(data => {
+        setRestaurant(data || null);
+      });
+    }
+  }, [restaurantId]);
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.totalPrice, 0);
-  const deliveryFee = deliveryType === 'DELIVERY' ? (restaurant?.deliveryFee ?? 5.00) : 0;
-  const discount = 0; 
-  const total = subtotal + deliveryFee - discount;
+  const deliveryFee = deliveryType === 'DELIVERY' ? (restaurant?.deliveryFee ?? 0) : 0;
+  
+  let discount = 0;
+  if (appliedCoupon) {
+    if (appliedCoupon.discountType === 'fixed') {
+        discount = appliedCoupon.discountValue;
+    } else { // percentage
+        discount = subtotal * (appliedCoupon.discountValue / 100);
+    }
+  }
+
+  const total = Math.max(0, subtotal + deliveryFee - discount);
 
   const handlePlaceOrder = () => {
-    if (!MOCK_USER) {
-        alert("Usuário não encontrado. Faça login novamente.");
-        navigate(ROUTE_PATHS.LOGIN);
-        return;
-    }
-
     let paymentMethodDescription = 'Não definido';
     if(selectedPaymentId.startsWith('card-')) {
         const cardId = selectedPaymentId.replace('card-', '');
@@ -48,28 +67,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ cartItems, deliveryAddr
     } else if (selectedPaymentId === 'on_delivery_card') {
         paymentMethodDescription = 'Pagar na entrega (cartão)';
     }
-
-
-    const newOrder: Order = {
-      id: `order-${Date.now()}`, 
-      userId: MOCK_USER.id,
-      restaurantId: restaurantId || 'unknown-rest',
-      restaurantName: restaurantName,
-      items: cartItems,
-      subtotal,
-      deliveryFee,
-      discount,
-      total,
-      status: OrderStatus.PLACED,
-      deliveryAddress,
-      paymentMethod: paymentMethodDescription,
-      createdAt: new Date().toISOString(),
-      trackingLog: [{ status: OrderStatus.PLACED, timestamp: new Date().toISOString() }],
-      deliveryType: deliveryType,
-      isLocal: false,
-      customerName: MOCK_USER.name,
-    };
-    onPlaceOrder(newOrder);
+    onPlaceOrder(paymentMethodDescription);
   };
 
   if (cartItems.length === 0) {
@@ -151,6 +149,17 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ cartItems, deliveryAddr
           </button>
         </div>
       </section>
+      
+      <section className="bg-white p-4 rounded-lg shadow border border-appBorderLight">
+          <h2 className="text-lg font-semibold text-appTextPrimary mb-3">Cupom</h2>
+          <CouponInputForm 
+             appliedCoupon={appliedCoupon}
+             error={couponError}
+             onApply={onApplyCoupon}
+             onRemove={onRemoveCoupon}
+             isLoading={isCouponLoading}
+          />
+      </section>
 
       <section className="bg-white p-4 rounded-lg shadow border border-appBorderLight">
         <h2 className="text-lg font-semibold text-appTextPrimary mb-3">Resumo do Pedido</h2>
@@ -178,7 +187,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ cartItems, deliveryAddr
         )}
         {discount > 0 && (
           <div className="flex justify-between text-sm text-red-500">
-            <span>Desconto</span>
+            <span>Desconto Cupom</span>
             <span>- R$ {discount.toFixed(2)}</span>
           </div>
         )}
