@@ -20,6 +20,7 @@ app.use('/api/auth', authRoutes);
 
 const productRoutes = require('./routes/product');
 app.use('/api/products', productRoutes);
+app.use('/products', productRoutes);
 
 const orderRoutes = require('./routes/order');
 app.use('/api/orders', orderRoutes);
